@@ -1,4 +1,4 @@
-const CACHE = 'adconapp-v1';
+const CACHE = 'adconapp-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', () => self.clients.claim());
