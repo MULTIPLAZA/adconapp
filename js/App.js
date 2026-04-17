@@ -1,0 +1,153 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { RenderDashboard }        from './Dashboard.js';
+import { RenderComparativo }      from './Comparativo.js';
+import { RenderObjetivoSucursal } from './ObjetivoSucursal.js';
+import { RenderObjetivoVendedor } from './ObjetivoVendedor.js';
+import { RenderParametro }        from './Parametro.js';
+
+// ── Configuracion ─────────────────────────────────────
+export const UrlApi   = 'https://apisql-production-665e.up.railway.app/sql';
+export const TokenApi = 'd6b29d58f9ce64d65d3d32ac50efb47532fb702d09b2f487eee7cc2cd1ceae68';
+
+export const Supa = createClient(
+  'https://pmfqrxyptdkjfsxzeuzl.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtZnFyeHlwdGRramZzeHpldXpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTAyNzUsImV4cCI6MjA5MjAyNjI3NX0.MovyyHyACKS4R81pIB7qNeh--gyPX1k7_nayAyiqjsk'
+);
+
+// ── Cache en sesion ───────────────────────────────────
+const Cache = {};
+
+export async function LlamarSP(Reporte) {
+  if (Cache[Reporte]) return Cache[Reporte];
+  const Resp = await fetch(UrlApi, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TokenApi}`
+    },
+    body: JSON.stringify({ sp: `Exec SpAdconApp @Reporte='${Reporte}'` })
+  });
+  if (!Resp.ok) throw new Error(`Error API: ${Resp.status}`);
+  const Datos = await Resp.json();
+  if (Datos.error) throw new Error(Datos.error);
+  Cache[Reporte] = Datos;
+  return Datos;
+}
+
+export function LimpiarCache() {
+  Object.keys(Cache).forEach(K => delete Cache[K]);
+}
+
+// ── Utilidades ────────────────────────────────────────
+export function FormatearMillon(Valor) {
+  if (Valor === null || Valor === undefined) return '—';
+  return new Intl.NumberFormat('es-PY', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  }).format(Valor) + ' M';
+}
+
+export function ClasePct(Pct) {
+  if (Pct >= 100) return 'PctExcelente';
+  if (Pct >= 80)  return 'PctBueno';
+  if (Pct >= 60)  return 'PctRegular';
+  return 'PctMalo';
+}
+
+export function ClaseBarraPct(Pct) {
+  if (Pct >= 100) return 'BarraExcelente';
+  if (Pct >= 80)  return 'BarraBueno';
+  if (Pct >= 60)  return 'BarraRegular';
+  return 'BarraMalo';
+}
+
+export function ClaseKpiFondo(Pct) {
+  if (Pct >= 100) return 'KpiFondoExcelente';
+  if (Pct >= 80)  return 'KpiFondoBueno';
+  if (Pct >= 60)  return 'KpiFondoRegular';
+  return 'KpiFondoMalo';
+}
+
+export function NombreMes(Mes) {
+  return ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][Mes];
+}
+
+export function MostrarCargando(Vista, Visible) {
+  const El = document.getElementById(`Cargando${Vista}`);
+  if (El) El.classList.toggle('Visible', Visible);
+}
+
+// ── Opciones Chart.js ─────────────────────────────────
+export const OpcionesGrafico = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      labels: { color: '#e2e4ef', font: { size: 11 }, boxWidth: 12 }
+    }
+  },
+  scales: {
+    x: {
+      ticks: { color: '#8b90a7', font: { size: 11 } },
+      grid:  { color: '#2e3247' }
+    },
+    y: {
+      ticks: {
+        color: '#8b90a7',
+        font:  { size: 11 },
+        callback: (V) => V + ' M'
+      },
+      grid: { color: '#2e3247' }
+    }
+  }
+};
+
+// ── Router ────────────────────────────────────────────
+const Renderizadores = {
+  Dashboard:        RenderDashboard,
+  Comparativo:      RenderComparativo,
+  ObjetivoSucursal: RenderObjetivoSucursal,
+  ObjetivoVendedor: RenderObjetivoVendedor,
+  Parametro:        RenderParametro
+};
+
+let VistaActual = 'Dashboard';
+
+window.Navegar = async function(Vista, Boton) {
+  if (VistaActual === Vista) return;
+
+  document.querySelectorAll('.Vista').forEach(S => S.classList.remove('Activo'));
+  document.querySelectorAll('.NavBoton').forEach(B => B.classList.remove('Activo'));
+
+  document.getElementById(`Vista${Vista}`).classList.add('Activo');
+  Boton.classList.add('Activo');
+
+  VistaActual = Vista;
+  await Renderizadores[Vista]();
+};
+
+// ── Inicio ────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  // Fecha en cabecera
+  const Hoy = new Date();
+  document.getElementById('FechaCabecera').textContent =
+    Hoy.toLocaleDateString('es-PY', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  // Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
+  // Boton refrescar
+  document.getElementById('BotonRefrescar').onclick = async () => {
+    const Btn = document.getElementById('BotonRefrescar');
+    Btn.classList.add('Girando');
+    LimpiarCache();
+    await Renderizadores[VistaActual](true);
+    Btn.classList.remove('Girando');
+  };
+
+  // Vista inicial
+  await RenderDashboard();
+});

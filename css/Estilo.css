@@ -1,0 +1,440 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --fondo:           #0f1117;
+  --fondo-tarjeta:   #1a1d27;
+  --fondo-input:     #252836;
+  --borde:           #2e3247;
+  --primario:        #4f8ef7;
+  --primario-hover:  #3a78e8;
+  --peligro:         #e05252;
+  --exito:           #3db87a;
+  --advertencia:     #f7a84f;
+  --texto:           #e2e4ef;
+  --texto-suave:     #8b90a7;
+  --radio:           8px;
+
+  --nav-alto:        60px;
+  --cab-alto:        52px;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+  font-size: 14px;
+  min-height: 100vh;
+  overscroll-behavior: none;
+}
+
+/* ── Cabecera ────────────────────────────────────────── */
+.Cabecera {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--cab-alto);
+  background: var(--fondo-tarjeta);
+  border-bottom: 1px solid var(--borde);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 50;
+}
+
+.LogoCabecera {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--primario);
+  letter-spacing: 2px;
+}
+
+.AccionCabecera {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.FechaCabecera {
+  font-size: 12px;
+  color: var(--texto-suave);
+  text-transform: capitalize;
+}
+
+.BotonRefrescar {
+  background: none;
+  border: none;
+  color: var(--texto-suave);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  transition: color .2s, background .2s;
+}
+
+.BotonRefrescar:hover { color: var(--primario); background: var(--fondo-input); }
+
+.BotonRefrescar svg { width: 18px; height: 18px; }
+
+.BotonRefrescar.Girando svg {
+  animation: girar .8s linear infinite;
+}
+
+@keyframes girar { to { transform: rotate(360deg); } }
+
+/* ── Principal ───────────────────────────────────────── */
+.Principal {
+  margin-top: var(--cab-alto);
+  margin-bottom: var(--nav-alto);
+  padding: 16px;
+  min-height: calc(100vh - var(--cab-alto) - var(--nav-alto));
+}
+
+/* ── Vistas ──────────────────────────────────────────── */
+.Vista { display: none; }
+.Vista.Activo { display: block; }
+
+/* ── Cargando ────────────────────────────────────────── */
+.Cargando {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 12px;
+  color: var(--texto-suave);
+  font-size: 13px;
+}
+
+.Cargando.Visible { display: flex; }
+
+.Spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--borde);
+  border-top-color: var(--primario);
+  border-radius: 50%;
+  animation: girar .7s linear infinite;
+}
+
+/* ── Navegacion inferior ─────────────────────────────── */
+.NavInferior {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-alto);
+  background: var(--fondo-tarjeta);
+  border-top: 1px solid var(--borde);
+  display: flex;
+  z-index: 50;
+}
+
+.NavBoton {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--texto-suave);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .2s;
+  padding: 8px 4px;
+  letter-spacing: 0.3px;
+}
+
+.NavBoton svg { width: 20px; height: 20px; }
+.NavBoton:hover { color: var(--texto); }
+.NavBoton.Activo { color: var(--primario); }
+
+/* ── Tarjetas ────────────────────────────────────────── */
+.Tarjeta {
+  background: var(--fondo-tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.TarjetaTitulo {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 14px;
+}
+
+/* ── KPI row ─────────────────────────────────────────── */
+.FilaKpi {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.TarjetaKpi {
+  background: var(--fondo-tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.KpiLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.KpiValor {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--texto);
+  line-height: 1.1;
+}
+
+.KpiPct {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* KPI fondos de color segun % */
+.KpiFondoExcelente { border-color: rgba(61,184,122,.4);  background: rgba(61,184,122,.08); }
+.KpiFondoBueno     { border-color: rgba(79,142,247,.4);  background: rgba(79,142,247,.08); }
+.KpiFondoRegular   { border-color: rgba(247,168,79,.4);  background: rgba(247,168,79,.08); }
+.KpiFondoMalo      { border-color: rgba(224,82,82,.4);   background: rgba(224,82,82,.08);  }
+
+/* ── Tablas ──────────────────────────────────────────── */
+.TablaContenedor {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead th {
+  background: var(--fondo-input);
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--borde);
+  white-space: nowrap;
+}
+
+thead th.Derecha { text-align: right; }
+
+tbody tr {
+  border-bottom: 1px solid var(--borde);
+  transition: background .15s;
+}
+
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(79,142,247,.04); }
+
+tbody td {
+  padding: 11px 12px;
+  vertical-align: middle;
+}
+
+tbody td.Derecha { text-align: right; }
+
+/* ── Porcentajes ─────────────────────────────────────── */
+.PctExcelente { color: var(--exito);      font-weight: 700; }
+.PctBueno     { color: var(--primario);   font-weight: 700; }
+.PctRegular   { color: var(--advertencia); font-weight: 700; }
+.PctMalo      { color: var(--peligro);    font-weight: 700; }
+
+/* ── Barra de progreso ───────────────────────────────── */
+.BarraProgreso {
+  height: 4px;
+  background: var(--fondo-input);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.BarraRelleno {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .4s ease;
+}
+
+.BarraExcelente { background: var(--exito); }
+.BarraBueno     { background: var(--primario); }
+.BarraRegular   { background: var(--advertencia); }
+.BarraMalo      { background: var(--peligro); }
+
+/* ── Grafico ─────────────────────────────────────────── */
+.GraficoContenedor {
+  position: relative;
+  height: 220px;
+}
+
+/* ── Filtros ─────────────────────────────────────────── */
+.FilaFiltro {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.Selector {
+  background: var(--fondo-input);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  color: var(--texto);
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  flex: 1;
+  min-width: 100px;
+}
+
+.Selector:focus { border-color: var(--primario); }
+
+/* ── Formularios ─────────────────────────────────────── */
+.Grupo {
+  margin-bottom: 14px;
+}
+
+.Grupo label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--texto-suave);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.Grupo input {
+  width: 100%;
+  background: var(--fondo-input);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  color: var(--texto);
+  padding: 9px 11px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+}
+
+.Grupo input:focus { border-color: var(--primario); }
+
+.Grupo input::placeholder { color: var(--texto-suave); }
+
+/* Input editable en tabla */
+.InputTabla {
+  background: var(--fondo-input);
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  color: var(--texto);
+  padding: 6px 8px;
+  font-size: 13px;
+  width: 100px;
+  text-align: right;
+  outline: none;
+  transition: border-color .2s;
+}
+
+.InputTabla:focus { border-color: var(--primario); }
+
+/* ── Botones ─────────────────────────────────────────── */
+.Boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--radio);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, opacity .2s;
+}
+
+.Boton:disabled { opacity: .5; cursor: not-allowed; }
+
+.BotonPrimario  { background: var(--primario); color: #fff; }
+.BotonPrimario:hover:not(:disabled) { background: var(--primario-hover); }
+
+.BotonCompleto  { width: 100%; justify-content: center; }
+
+/* ── Tabs ────────────────────────────────────────────── */
+.TabLista {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--borde);
+  margin-bottom: 16px;
+}
+
+.TabBoton {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--texto-suave);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+  margin-bottom: -1px;
+}
+
+.TabBoton:hover { color: var(--texto); }
+.TabBoton.Activo { color: var(--primario); border-bottom-color: var(--primario); }
+
+/* ── Alertas ─────────────────────────────────────────── */
+.Alerta {
+  padding: 10px 14px;
+  border-radius: var(--radio);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.AlertaError { background: rgba(224,82,82,.15); border: 1px solid rgba(224,82,82,.4); color: #f08080; }
+.AlertaExito { background: rgba(61,184,122,.15); border: 1px solid rgba(61,184,122,.4); color: #5dd49a; }
+
+/* ── Vacio ───────────────────────────────────────────── */
+.VacioMensaje {
+  text-align: center;
+  padding: 30px;
+  color: var(--texto-suave);
+  font-size: 13px;
+}
+
+/* ── Titulo seccion ──────────────────────────────────── */
+.TituloSeccion {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: var(--texto);
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 400px) {
+  .FilaKpi { grid-template-columns: repeat(2, 1fr); }
+  .FilaKpi .TarjetaKpi:last-child { grid-column: span 2; }
+  .KpiValor { font-size: 15px; }
+}
