@@ -7,7 +7,7 @@ import { RenderParametro }        from './Parametro.js';
 
 // ── Configuracion ─────────────────────────────────────
 export const UrlApi   = 'https://apisql-production-665e.up.railway.app/sql';
-export const TokenApi = 'd6b29d58f9ce64d65d3d32ac50efb47532fb702d09b2f487eee7cc2cd1ceae68';
+export const TokenApi = '57e5a1ae078aa519deaa5832a2b43fc42aadc883b4514696506ef41e85aa89ad';
 
 export const Supa = createClient(
   'https://pmfqrxyptdkjfsxzeuzl.supabase.co',
