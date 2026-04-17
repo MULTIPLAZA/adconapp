@@ -432,6 +432,41 @@ tbody td.Derecha { text-align: right; }
   color: var(--texto);
 }
 
+/* ── Login ───────────────────────────────────────────── */
+.LoginFondo {
+  position: fixed;
+  inset: 0;
+  background: var(--fondo);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.LoginTarjeta {
+  background: var(--fondo-tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 36px 28px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.LoginLogo {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primario);
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.LoginSubtitulo {
+  font-size: 13px;
+  color: var(--texto-suave);
+  margin-bottom: 28px;
+}
+
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 400px) {
   .FilaKpi { grid-template-columns: repeat(2, 1fr); }

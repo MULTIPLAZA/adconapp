@@ -127,17 +127,75 @@ window.Navegar = async function(Vista, Boton) {
   await Renderizadores[Vista]();
 };
 
-// ── Inicio ────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  // Fecha en cabecera
+// ── Autenticacion ─────────────────────────────────────
+function MostrarApp() {
+  document.getElementById('LoginFondo').style.display    = 'none';
+  document.getElementById('AppContenido').style.display = 'block';
   const Hoy = new Date();
   document.getElementById('FechaCabecera').textContent =
     Hoy.toLocaleDateString('es-PY', { weekday: 'short', day: 'numeric', month: 'short' });
+}
 
+function MostrarLogin() {
+  document.getElementById('LoginFondo').style.display    = 'flex';
+  document.getElementById('AppContenido').style.display = 'none';
+}
+
+async function IniciarLogin() {
+  const Usuario    = document.getElementById('LoginUsuario').value.trim();
+  const Contrasena = document.getElementById('LoginContrasena').value;
+  const Alerta     = document.getElementById('LoginAlerta');
+  const Boton      = document.getElementById('BotonLogin');
+
+  Alerta.style.display = 'none';
+  Boton.disabled = true;
+  Boton.textContent = 'Ingresando...';
+
+  const { error } = await Supa.auth.signInWithPassword({ email: Usuario, password: Contrasena });
+
+  if (error) {
+    Alerta.textContent   = 'Usuario o contrasena incorrectos';
+    Alerta.style.display = 'block';
+    Boton.disabled = false;
+    Boton.textContent = 'Ingresar';
+    return;
+  }
+
+  MostrarApp();
+  await RenderDashboard();
+}
+
+async function CerrarSesion() {
+  await Supa.auth.signOut();
+  LimpiarCache();
+  MostrarLogin();
+  document.getElementById('LoginUsuario').value    = '';
+  document.getElementById('LoginContrasena').value = '';
+}
+
+// ── Inicio ────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
   // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
+
+  // Verificar sesion activa
+  const { data: { session } } = await Supa.auth.getSession();
+
+  if (!session) {
+    MostrarLogin();
+  } else {
+    MostrarApp();
+    await RenderDashboard();
+  }
+
+  // Login: Enter en contrasena
+  document.getElementById('LoginContrasena').addEventListener('keydown', (E) => {
+    if (E.key === 'Enter') IniciarLogin();
+  });
+
+  document.getElementById('BotonLogin').onclick = IniciarLogin;
 
   // Boton refrescar
   document.getElementById('BotonRefrescar').onclick = async () => {
@@ -148,6 +206,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     Btn.classList.remove('Girando');
   };
 
-  // Vista inicial
-  await RenderDashboard();
+  // Boton cerrar sesion
+  document.getElementById('BotonSalir').onclick = CerrarSesion;
+
+  // Escuchar cambios de sesion (expiracion automatica)
+  Supa.auth.onAuthStateChange((Evento) => {
+    if (Evento === 'SIGNED_OUT') MostrarLogin();
+  });
 });
