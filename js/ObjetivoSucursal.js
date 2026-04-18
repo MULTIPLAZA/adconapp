@@ -71,14 +71,14 @@ export async function RenderObjetivoSucursal(Forzar = false) {
           </div>
         </div>
         <div class="Tarjeta" style="margin-bottom:0">
-          <div class="TarjetaTitulo">Top 3 mayor caida vs año anterior</div>
+          <div class="TarjetaTitulo">Top 3 caida — ultimos 30 dias vs año ant.</div>
           <div id="ContenidoTop3"></div>
         </div>
       </div>
 
       <!-- Horas concurridas -->
       <div class="Tarjeta" style="margin-top:14px">
-        <div class="TarjetaTitulo">Hora mas concurrida — ultimos 7 dias</div>
+        <div class="TarjetaTitulo">Promedio diario por rango horario — ultimos 7 dias</div>
         <div id="ContenidoHoras" class="TablaContenedor">
           <div class="VacioMensaje">Cargando...</div>
         </div>
@@ -121,11 +121,24 @@ async function CargarTablaYGraficos() {
            .forEach(D => { VentasPorSucursal[D.Sucursal] = (VentasPorSucursal[D.Sucursal] ?? 0) + D.Total; });
     }
 
-    // Ventas mismo mes año anterior (para Top 3 caida)
-    const DatosMes  = await LlamarSP('VENTASXMES');
-    const VentasAnt = {};
-    DatosMes.filter(D => D.Anio === Anio - 1 && D.Mes === Mes)
-             .forEach(D => { VentasAnt[D.Sucursal] = (VentasAnt[D.Sucursal] ?? 0) + D.Total; });
+    // Ventas ultimos 30 dias vs mismos 30 dias año anterior (para Top 3 caida)
+    // Se usa ayer como ultimo dia completo para evitar parciales del dia en curso
+    const Ayer        = new Date(Hoy); Ayer.setDate(Ayer.getDate() - 1);
+    const Inicio30Act = new Date(Ayer); Inicio30Act.setDate(Inicio30Act.getDate() - 29);
+    const Fin30Ant    = new Date(Ayer); Fin30Ant.setFullYear(Fin30Ant.getFullYear() - 1);
+    const Inicio30Ant = new Date(Inicio30Act); Inicio30Ant.setFullYear(Inicio30Ant.getFullYear() - 1);
+
+    const FStr = (D) => D.toISOString().substring(0, 10);
+    const [FA0, FA1, FB0, FB1] = [FStr(Inicio30Act), FStr(Ayer), FStr(Inicio30Ant), FStr(Fin30Ant)];
+
+    const DatosVentasDia = await LlamarSP('VENTASXDIA');
+    const Ventas30Act = {}, Ventas30Ant = {};
+    DatosVentasDia.forEach(D => {
+      const F   = String(D.Fecha ?? '').substring(0, 10);
+      const Suc = D.Sucursal;
+      if (F >= FA0 && F <= FA1) Ventas30Act[Suc] = (Ventas30Act[Suc] ?? 0) + (D.Total ?? 0);
+      if (F >= FB0 && F <= FB1) Ventas30Ant[Suc] = (Ventas30Ant[Suc] ?? 0) + (D.Total ?? 0);
+    });
 
     // Objetivos Supabase
     const { data: ObjetivosData } = await Supa
@@ -231,11 +244,12 @@ async function CargarTablaYGraficos() {
       );
     }
 
-    // ── Top 3 mayor caida ─────────────────────────────
-    const Caidas = Sucursales
+    // ── Top 3 mayor caida (rolling 30 dias vs mismo periodo año anterior) ────
+    const SucsCaida = [...new Set([...Object.keys(Ventas30Act), ...Object.keys(Ventas30Ant)])];
+    const Caidas = SucsCaida
       .map(Suc => {
-        const Act = VentasPorSucursal[Suc] ?? 0;
-        const Ant = VentasAnt[Suc] ?? null;
+        const Act = Ventas30Act[Suc] ?? 0;
+        const Ant = Ventas30Ant[Suc] ?? null;
         const Pct = Ant > 0 ? ((Act - Ant) / Ant) * 100 : null;
         return { Sucursal: Suc, Actual: Act, Anterior: Ant, Pct };
       })
@@ -292,6 +306,7 @@ async function CargarHoraSucursal() {
 
     const Sucursales = Object.keys(Conteo).sort();
     const Labels     = RangosHora.map(R => R.Label);
+    const Dias       = 7;
 
     El.innerHTML = `
       <table>
@@ -304,17 +319,18 @@ async function CargarHoraSucursal() {
         </thead>
         <tbody>
           ${Sucursales.map(Suc => {
-            const Fila   = Conteo[Suc];
-            const MaxVal = Math.max(...Labels.map(L => Fila[L] ?? 0));
-            const PicoL  = Labels.find(L => (Fila[L] ?? 0) === MaxVal) ?? '—';
+            const Fila    = Conteo[Suc];
+            // Comparar promedios para encontrar pico
+            const MaxProm = Math.max(...Labels.map(L => (Fila[L] ?? 0) / Dias));
+            const PicoL   = Labels.find(L => (Fila[L] ?? 0) / Dias === MaxProm) ?? '—';
             return `
               <tr>
                 <td>${Suc}</td>
                 ${Labels.map(L => {
-                  const Val    = Fila[L] ?? 0;
-                  const EsPico = Val === MaxVal && MaxVal > 0;
+                  const Prom   = (Fila[L] ?? 0) / Dias;
+                  const EsPico = Prom === MaxProm && MaxProm > 0;
                   return `<td class="Derecha" style="${EsPico ? 'color:var(--primario);font-weight:700' : 'color:var(--texto-suave)'}">
-                    ${Val > 0 ? Val : '—'}
+                    ${Prom > 0 ? Prom.toFixed(1) : '—'}
                   </td>`;
                 }).join('')}
                 <td class="Derecha" style="color:var(--primario);font-weight:700">${PicoL}</td>
