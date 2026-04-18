@@ -121,23 +121,33 @@ async function CargarTablaYGraficos() {
            .forEach(D => { VentasPorSucursal[D.Sucursal] = (VentasPorSucursal[D.Sucursal] ?? 0) + D.Total; });
     }
 
-    // Top 3 caida: ultimo mes COMPLETO vs mismo mes año anterior
-    // Ambos periodos son 100% completos, comparacion justa sin parciales
-    const MesCompFecha = new Date(Hoy.getFullYear(), Hoy.getMonth() - 1, 1);
-    const AnioMC = MesCompFecha.getFullYear();
-    const MesMC  = MesCompFecha.getMonth() + 1;
+    // Top 3 caida: ultimos 30 dias completos vs los 30 dias anteriores
+    // Ambos periodos son 100% completos, sin parciales del dia/mes en curso
+    // LocalStr evita desfase UTC (Paraguay UTC-4)
+    const LocalStr = (D) => {
+      const Y = D.getFullYear();
+      const M = String(D.getMonth() + 1).padStart(2, '0');
+      const d = String(D.getDate()).padStart(2, '0');
+      return `${Y}-${M}-${d}`;
+    };
+
+    const Ayer        = new Date(Hoy); Ayer.setDate(Ayer.getDate() - 1);
+    const Inicio30Act = new Date(Ayer); Inicio30Act.setDate(Inicio30Act.getDate() - 29);
+    const Fin30Ant    = new Date(Ayer); Fin30Ant.setDate(Fin30Ant.getDate() - 30);
+    const Inicio30Ant = new Date(Ayer); Inicio30Ant.setDate(Inicio30Ant.getDate() - 59);
 
     document.getElementById('TituloTop3').textContent =
-      `Top 3 caida — ${NombreMes(MesMC)} vs ${NombreMes(MesMC)} ${AnioMC - 1}`;
+      `Top 3 caida — ultimos 30 dias vs 30 dias anteriores`;
 
-    const DatosMesAll = await LlamarSP('VENTASXMES');
+    const DatosVentasDia = await LlamarSP('VENTASXDIA');
     const VentasActMC = {}, VentasAntMC = {};
-    DatosMesAll
-      .filter(D => D.Anio === AnioMC     && D.Mes === MesMC)
-      .forEach(D => { VentasActMC[D.Sucursal] = (VentasActMC[D.Sucursal] ?? 0) + D.Total; });
-    DatosMesAll
-      .filter(D => D.Anio === AnioMC - 1 && D.Mes === MesMC)
-      .forEach(D => { VentasAntMC[D.Sucursal] = (VentasAntMC[D.Sucursal] ?? 0) + D.Total; });
+    const [FA0, FA1, FB0, FB1] = [LocalStr(Inicio30Act), LocalStr(Ayer), LocalStr(Inicio30Ant), LocalStr(Fin30Ant)];
+    DatosVentasDia.forEach(D => {
+      const F   = String(D.Fecha ?? '').substring(0, 10);
+      const Suc = D.Sucursal;
+      if (F >= FA0 && F <= FA1) VentasActMC[Suc] = (VentasActMC[Suc] ?? 0) + (D.Total ?? 0);
+      if (F >= FB0 && F <= FB1) VentasAntMC[Suc] = (VentasAntMC[Suc] ?? 0) + (D.Total ?? 0);
+    });
 
     // Objetivos Supabase
     const { data: ObjetivosData } = await Supa
