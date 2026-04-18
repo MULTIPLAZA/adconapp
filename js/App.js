@@ -225,20 +225,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('BotonLogin').onclick = IniciarLogin;
 
-  // Boton instalar (Android/Chrome)
-  document.getElementById('BotonInstalar').onclick = async () => {
-    if (!PromptInstalar) return;
-    PromptInstalar.prompt();
-    const { outcome } = await PromptInstalar.userChoice;
-    if (outcome === 'accepted') {
-      document.getElementById('BotonInstalar').style.display = 'none';
+  const EsIOS        = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const EsStandalone = window.navigator.standalone === true
+                    || window.matchMedia('(display-mode: standalone)').matches;
+  const BtnInstalar  = document.getElementById('BotonInstalar');
+
+  // Si ya esta instalada como app, ocultar boton
+  if (EsStandalone) BtnInstalar.style.display = 'none';
+
+  // Boton instalar: comportamiento segun plataforma
+  BtnInstalar.onclick = async () => {
+    if (PromptInstalar) {
+      // Android/Chrome: prompt nativo del sistema
+      PromptInstalar.prompt();
+      const { outcome } = await PromptInstalar.userChoice;
+      if (outcome === 'accepted') BtnInstalar.style.display = 'none';
+      PromptInstalar = null;
+    } else if (EsIOS) {
+      // iOS: toggle del banner con instrucciones
+      const Banner = document.getElementById('BannerIOS');
+      Banner.style.display = Banner.style.display === 'none' ? 'block' : 'none';
+    } else {
+      alert('Para instalar:\n• Chrome: menu ⋮ → "Instalar aplicacion"\n• Edge: menu … → "Aplicaciones" → "Instalar"');
     }
-    PromptInstalar = null;
   };
 
-  // Banner iOS: mostrar si es Safari en iOS y aun no esta instalada
-  const EsIOS        = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const EsStandalone = window.navigator.standalone === true;
+  // Banner iOS: mostrar automaticamente al entrar
   if (EsIOS && !EsStandalone) {
     document.getElementById('BannerIOS').style.display = 'block';
   }
