@@ -79,7 +79,7 @@ export async function RenderObjetivoSucursal(Forzar = false) {
       <!-- Horas concurridas -->
       <div class="Tarjeta" style="margin-top:14px">
         <div class="TarjetaTitulo">Promedio diario por rango horario — ultimos 7 dias</div>
-        <div id="ContenidoHoras" class="TablaContenedor">
+        <div id="ContenidoHoras">
           <div class="VacioMensaje">Cargando...</div>
         </div>
       </div>
@@ -305,7 +305,7 @@ async function CargarHoraSucursal() {
       return;
     }
 
-    // Agrupar: { [Sucursal]: { [RangoLabel]: count } }
+    // Agrupar: { [Sucursal]: { [RangoLabel]: { Cnt, Total } } }
     const Conteo = {};
     Datos.forEach(D => {
       const Suc  = D.Sucursal;
@@ -315,48 +315,85 @@ async function CargarHoraSucursal() {
       const Rango = RangosHora.find(R => Hora >= R.Desde && Hora < R.Hasta);
       if (!Rango) return;
       if (!Conteo[Suc]) Conteo[Suc] = {};
-      Conteo[Suc][Rango.Label] = (Conteo[Suc][Rango.Label] ?? 0) + 1;
+      if (!Conteo[Suc][Rango.Label]) Conteo[Suc][Rango.Label] = { Cnt: 0, Total: 0 };
+      Conteo[Suc][Rango.Label].Cnt   += 1;
+      Conteo[Suc][Rango.Label].Total += D.Total ?? 0;
     });
 
     const Sucursales = Object.keys(Conteo).sort();
     const Labels     = RangosHora.map(R => R.Label);
     const Dias       = 7;
 
+    // ── Mejor y Peor pico global ──────────────────────
+    const TodosPicos = [];
+    Sucursales.forEach(Suc => {
+      Labels.forEach(L => {
+        const G = Conteo[Suc][L];
+        if (G && G.Cnt > 0)
+          TodosPicos.push({ Sucursal: Suc, Rango: L, Prom: G.Cnt / Dias, Total: G.Total });
+      });
+    });
+    TodosPicos.sort((A, B) => B.Prom - A.Prom);
+    const MejorPico = TodosPicos[0]                      ?? null;
+    const PeorPico  = TodosPicos[TodosPicos.length - 1] ?? null;
+
+    const Ficha = (P, EsMejor) => {
+      const C  = EsMejor ? 'var(--exito)'             : 'var(--peligro)';
+      const BG = EsMejor ? 'rgba(61,184,122,.12)'     : 'rgba(224,82,82,.12)';
+      const BR = EsMejor ? 'rgba(61,184,122,.35)'     : 'rgba(224,82,82,.35)';
+      return `
+        <div style="background:${BG};border:1px solid ${BR};border-radius:8px;padding:14px">
+          <div style="font-size:10px;font-weight:700;color:${C};text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px">
+            ${EsMejor ? 'Mejor pico global' : 'Menor pico global'}
+          </div>
+          <div style="font-size:15px;font-weight:800;color:var(--texto)">${P.Sucursal}</div>
+          <div style="font-size:12px;color:var(--texto-suave);margin-top:3px">
+            Rango ${P.Rango} &nbsp;·&nbsp; ${P.Prom.toFixed(1)} doc/día
+          </div>
+          <div style="font-size:20px;font-weight:800;color:${C};margin-top:10px">${FormatearGs(P.Total)}</div>
+          <div style="font-size:10px;color:var(--texto-suave);margin-top:2px">total 7 días</div>
+        </div>`;
+    };
+
     El.innerHTML = `
-      <table>
-        <thead>
-          <tr>
-            <th>Sucursal</th>
-            ${Labels.map(L => `<th class="Derecha">${L}</th>`).join('')}
-            <th class="Derecha">Pico</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${Sucursales.map(Suc => {
-            const Fila   = Conteo[Suc];
-            const Proms      = Labels.map(L => (Fila[L] ?? 0) / Dias);
-            const SoloPos    = Proms.filter(P => P > 0);
-            const MaxProm    = SoloPos.length ? Math.max(...SoloPos) : 0;
-            // Valores unicos ordenados: base para asignar rango ordinal de color
-            const UnicosSorted = [...new Set(SoloPos)].sort((A, B) => A - B);
-            const PicoL      = MaxProm > 0
-              ? Labels[Proms.indexOf(MaxProm)]
-              : '—';
-            return `
-              <tr>
-                <td>${Suc}</td>
-                ${Proms.map((Prom) => {
-                  const Color = ColorEscalaHora(Prom, UnicosSorted);
-                  const Bold  = Prom === MaxProm && MaxProm > 0 ? 'font-weight:700;' : '';
-                  return `<td class="Derecha" style="color:${Color};${Bold}">
-                    ${Prom > 0 ? Prom.toFixed(1) : '—'}
-                  </td>`;
-                }).join('')}
-                <td class="Derecha" style="color:hsl(120,95%,58%);font-weight:700">${PicoL}</td>
-              </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
+      ${MejorPico && PeorPico ? `
+        <div class="GridDoble" style="margin-bottom:14px">
+          ${Ficha(MejorPico, true)}
+          ${Ficha(PeorPico,  false)}
+        </div>` : ''}
+      <div class="TablaContenedor">
+        <table>
+          <thead>
+            <tr>
+              <th>Sucursal</th>
+              ${Labels.map(L => `<th class="Derecha">${L}</th>`).join('')}
+              <th class="Derecha">Pico</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Sucursales.map(Suc => {
+              const Fila     = Conteo[Suc];
+              const Proms    = Labels.map(L => (Fila[L]?.Cnt ?? 0) / Dias);
+              const SoloPos  = Proms.filter(P => P > 0);
+              const MaxProm  = SoloPos.length ? Math.max(...SoloPos) : 0;
+              const UnicosSorted = [...new Set(SoloPos)].sort((A, B) => A - B);
+              const PicoL    = MaxProm > 0 ? Labels[Proms.indexOf(MaxProm)] : '—';
+              return `
+                <tr>
+                  <td>${Suc}</td>
+                  ${Proms.map(Prom => {
+                    const Color = ColorEscalaHora(Prom, UnicosSorted);
+                    const Bold  = Prom === MaxProm && MaxProm > 0 ? 'font-weight:700;' : '';
+                    return `<td class="Derecha" style="color:${Color};${Bold}">
+                      ${Prom > 0 ? Prom.toFixed(1) : '—'}
+                    </td>`;
+                  }).join('')}
+                  <td class="Derecha" style="color:hsl(120,95%,58%);font-weight:700">${PicoL}</td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
     `;
   } catch {
     El.innerHTML = '<div class="VacioMensaje">Sin datos de horario</div>';
