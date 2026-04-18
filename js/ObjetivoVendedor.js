@@ -35,6 +35,12 @@ export async function RenderObjetivoVendedor(Forzar = false) {
         </select>
       </div>
 
+      <div class="FilaFiltro">
+        <input type="text" class="Selector" id="ObjVenBuscar"
+          placeholder="Buscar vendedor..."
+          style="flex:2; min-width:160px" />
+      </div>
+
       <div class="Tarjeta">
         <div class="TarjetaTitulo" id="TituloObjVen">Cargando...</div>
         <div class="TablaContenedor">
@@ -61,6 +67,34 @@ export async function RenderObjetivoVendedor(Forzar = false) {
     document.getElementById('ObjVenAnio').onchange      = CargarTablaObjVen;
     document.getElementById('ObjVenMes').onchange       = CargarTablaObjVen;
     document.getElementById('ObjVenSucursal').onchange  = CargarTablaObjVen;
+
+    // Filtro por texto: muestra/oculta filas sin re-consultar
+    document.getElementById('ObjVenBuscar').oninput = function() {
+      const Texto = this.value.toLowerCase().trim();
+      const Filas = document.querySelectorAll('#CuerpoTablaObjVen tr');
+      let GrupoActual = null;
+      let GrupoTieneVisible = false;
+
+      Filas.forEach(Fila => {
+        if (Fila.classList.contains('FilaGrupo')) {
+          // Antes de procesar nuevo grupo, ocultar el anterior si no tuvo visibles
+          if (GrupoActual && !GrupoTieneVisible) GrupoActual.style.display = 'none';
+          GrupoActual = Fila;
+          GrupoTieneVisible = false;
+          Fila.style.display = '';
+        } else if (Fila.style.fontWeight === '700' || Fila.querySelector('td')?.textContent === 'TOTAL') {
+          // Fila total: siempre visible
+          Fila.style.display = '';
+        } else {
+          const NombreVendedor = Fila.querySelector('td')?.textContent.toLowerCase() ?? '';
+          const Visible = !Texto || NombreVendedor.includes(Texto);
+          Fila.style.display = Visible ? '' : 'none';
+          if (Visible) GrupoTieneVisible = true;
+        }
+      });
+      // Ultimo grupo
+      if (GrupoActual && !GrupoTieneVisible) GrupoActual.style.display = 'none';
+    };
 
   } catch (E) {
     Contenedor.innerHTML = `<div class="Alerta AlertaError">Error: ${E.message}</div>`;
