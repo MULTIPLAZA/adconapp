@@ -115,6 +115,22 @@ export const OpcionesGrafico = {
   }
 };
 
+// ── Instalacion PWA ───────────────────────────────────
+let PromptInstalar = null;
+
+window.addEventListener('beforeinstallprompt', (E) => {
+  E.preventDefault();
+  PromptInstalar = E;
+  const Btn = document.getElementById('BotonInstalar');
+  if (Btn) Btn.style.display = 'flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  PromptInstalar = null;
+  const Btn = document.getElementById('BotonInstalar');
+  if (Btn) Btn.style.display = 'none';
+});
+
 // ── Router ────────────────────────────────────────────
 const Renderizadores = {
   Dashboard:        RenderDashboard,
@@ -208,6 +224,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('BotonLogin').onclick = IniciarLogin;
+
+  // Boton instalar (Android/Chrome)
+  document.getElementById('BotonInstalar').onclick = async () => {
+    if (!PromptInstalar) return;
+    PromptInstalar.prompt();
+    const { outcome } = await PromptInstalar.userChoice;
+    if (outcome === 'accepted') {
+      document.getElementById('BotonInstalar').style.display = 'none';
+    }
+    PromptInstalar = null;
+  };
+
+  // Banner iOS: mostrar si es Safari en iOS y aun no esta instalada
+  const EsIOS        = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const EsStandalone = window.navigator.standalone === true;
+  if (EsIOS && !EsStandalone) {
+    document.getElementById('BannerIOS').style.display = 'block';
+  }
 
   // Boton refrescar
   document.getElementById('BotonRefrescar').onclick = async () => {
