@@ -71,7 +71,7 @@ export async function RenderObjetivoSucursal(Forzar = false) {
           </div>
         </div>
         <div class="Tarjeta" style="margin-bottom:0">
-          <div class="TarjetaTitulo">Top 3 caida — ultimos 30 dias vs año ant.</div>
+          <div class="TarjetaTitulo" id="TituloTop3">Top 3 caida</div>
           <div id="ContenidoTop3"></div>
         </div>
       </div>
@@ -121,24 +121,23 @@ async function CargarTablaYGraficos() {
            .forEach(D => { VentasPorSucursal[D.Sucursal] = (VentasPorSucursal[D.Sucursal] ?? 0) + D.Total; });
     }
 
-    // Ventas ultimos 30 dias vs mismos 30 dias año anterior (para Top 3 caida)
-    // Se usa ayer como ultimo dia completo para evitar parciales del dia en curso
-    const Ayer        = new Date(Hoy); Ayer.setDate(Ayer.getDate() - 1);
-    const Inicio30Act = new Date(Ayer); Inicio30Act.setDate(Inicio30Act.getDate() - 29);
-    const Fin30Ant    = new Date(Ayer); Fin30Ant.setFullYear(Fin30Ant.getFullYear() - 1);
-    const Inicio30Ant = new Date(Inicio30Act); Inicio30Ant.setFullYear(Inicio30Ant.getFullYear() - 1);
+    // Top 3 caida: ultimo mes COMPLETO vs mismo mes año anterior
+    // Ambos periodos son 100% completos, comparacion justa sin parciales
+    const MesCompFecha = new Date(Hoy.getFullYear(), Hoy.getMonth() - 1, 1);
+    const AnioMC = MesCompFecha.getFullYear();
+    const MesMC  = MesCompFecha.getMonth() + 1;
 
-    const FStr = (D) => D.toISOString().substring(0, 10);
-    const [FA0, FA1, FB0, FB1] = [FStr(Inicio30Act), FStr(Ayer), FStr(Inicio30Ant), FStr(Fin30Ant)];
+    document.getElementById('TituloTop3').textContent =
+      `Top 3 caida — ${NombreMes(MesMC)} vs ${NombreMes(MesMC)} ${AnioMC - 1}`;
 
-    const DatosVentasDia = await LlamarSP('VENTASXDIA');
-    const Ventas30Act = {}, Ventas30Ant = {};
-    DatosVentasDia.forEach(D => {
-      const F   = String(D.Fecha ?? '').substring(0, 10);
-      const Suc = D.Sucursal;
-      if (F >= FA0 && F <= FA1) Ventas30Act[Suc] = (Ventas30Act[Suc] ?? 0) + (D.Total ?? 0);
-      if (F >= FB0 && F <= FB1) Ventas30Ant[Suc] = (Ventas30Ant[Suc] ?? 0) + (D.Total ?? 0);
-    });
+    const DatosMesAll = await LlamarSP('VENTASXMES');
+    const VentasActMC = {}, VentasAntMC = {};
+    DatosMesAll
+      .filter(D => D.Anio === AnioMC     && D.Mes === MesMC)
+      .forEach(D => { VentasActMC[D.Sucursal] = (VentasActMC[D.Sucursal] ?? 0) + D.Total; });
+    DatosMesAll
+      .filter(D => D.Anio === AnioMC - 1 && D.Mes === MesMC)
+      .forEach(D => { VentasAntMC[D.Sucursal] = (VentasAntMC[D.Sucursal] ?? 0) + D.Total; });
 
     // Objetivos Supabase
     const { data: ObjetivosData } = await Supa
@@ -262,12 +261,12 @@ async function CargarTablaYGraficos() {
       );
     }
 
-    // ── Top 3 mayor caida (rolling 30 dias vs mismo periodo año anterior) ────
-    const SucsCaida = [...new Set([...Object.keys(Ventas30Act), ...Object.keys(Ventas30Ant)])];
+    // ── Top 3 mayor caida (ultimo mes completo vs mismo mes año anterior) ────
+    const SucsCaida = [...new Set([...Object.keys(VentasActMC), ...Object.keys(VentasAntMC)])];
     const Caidas = SucsCaida
       .map(Suc => {
-        const Act = Ventas30Act[Suc] ?? 0;
-        const Ant = Ventas30Ant[Suc] ?? null;
+        const Act = VentasActMC[Suc] ?? 0;
+        const Ant = VentasAntMC[Suc] ?? null;
         const Pct = Ant > 0 ? ((Act - Ant) / Ant) * 100 : null;
         return { Sucursal: Suc, Actual: Act, Anterior: Ant, Pct };
       })
