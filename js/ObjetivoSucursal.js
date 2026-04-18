@@ -282,10 +282,14 @@ async function CargarTablaYGraficos() {
   }
 }
 
-// Interpola hue 0 (rojo) → 120 (verde) segun posicion de Val entre Min y Max
-function ColorEscalaHora(Val, Min, Max) {
-  if (Max <= 0) return 'var(--texto-suave)';
-  const Ratio = Max === Min ? 1 : (Val - Min) / (Max - Min);
+// Devuelve color por rango ordinal (no por valor absoluto).
+// Evita que valores proximos reciban colores casi identicos.
+// UnicosSorted = valores unicos positivos ordenados de menor a mayor.
+function ColorEscalaHora(Val, UnicosSorted) {
+  if (Val <= 0) return 'var(--texto-suave)';
+  const Idx   = UnicosSorted.indexOf(Val);           // posicion 0-based
+  const Total = UnicosSorted.length;
+  const Ratio = Total <= 1 ? 1 : Idx / (Total - 1); // 0=rojo, 1=verde
   const Hue   = Math.round(Ratio * 120);
   return `hsl(${Hue}, 95%, 58%)`;
 }
@@ -330,19 +334,20 @@ async function CargarHoraSucursal() {
         <tbody>
           ${Sucursales.map(Suc => {
             const Fila   = Conteo[Suc];
-            const Proms  = Labels.map(L => (Fila[L] ?? 0) / Dias);
-            const SoloPos = Proms.filter(P => P > 0);
-            const MinProm = SoloPos.length ? Math.min(...SoloPos) : 0;
-            const MaxProm = SoloPos.length ? Math.max(...SoloPos) : 0;
-            const PicoL   = MaxProm > 0
+            const Proms      = Labels.map(L => (Fila[L] ?? 0) / Dias);
+            const SoloPos    = Proms.filter(P => P > 0);
+            const MaxProm    = SoloPos.length ? Math.max(...SoloPos) : 0;
+            // Valores unicos ordenados: base para asignar rango ordinal de color
+            const UnicosSorted = [...new Set(SoloPos)].sort((A, B) => A - B);
+            const PicoL      = MaxProm > 0
               ? Labels[Proms.indexOf(MaxProm)]
               : '—';
             return `
               <tr>
                 <td>${Suc}</td>
-                ${Proms.map((Prom, I) => {
-                  const Color  = Prom > 0 ? ColorEscalaHora(Prom, MinProm, MaxProm) : 'var(--texto-suave)';
-                  const Bold   = Prom === MaxProm && MaxProm > 0 ? 'font-weight:700;' : '';
+                ${Proms.map((Prom) => {
+                  const Color = ColorEscalaHora(Prom, UnicosSorted);
+                  const Bold  = Prom === MaxProm && MaxProm > 0 ? 'font-weight:700;' : '';
                   return `<td class="Derecha" style="color:${Color};${Bold}">
                     ${Prom > 0 ? Prom.toFixed(1) : '—'}
                   </td>`;
