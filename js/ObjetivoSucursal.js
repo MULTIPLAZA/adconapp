@@ -243,12 +243,13 @@ async function CargarTablaYGraficos() {
                       const Val = Ds.data[I];
                       const Pct = Total > 0 ? ((Val / Total) * 100).toFixed(1) : '0.0';
                       return {
-                        text: `${Lbl}  ${FormatearGs(Val)}  (${Pct}%)`,
+                        text:        `${Lbl}  ${FormatearGs(Val)}  (${Pct}%)`,
                         fillStyle:   Ds.backgroundColor[I],
                         strokeStyle: '#1a1d27',
-                        lineWidth: 2,
-                        hidden: false,
-                        index: I
+                        fontColor:   '#e2e4ef',
+                        lineWidth:   2,
+                        hidden:      false,
+                        index:       I
                       };
                     });
                   }
