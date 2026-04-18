@@ -246,7 +246,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       const Banner = document.getElementById('BannerIOS');
       Banner.style.display = Banner.style.display === 'none' ? 'block' : 'none';
     } else {
-      alert('Para instalar:\n• Chrome: menu ⋮ → "Instalar aplicacion"\n• Edge: menu … → "Aplicaciones" → "Instalar"');
+      alert(
+        'Para instalar ADCONAPP:\n\n' +
+        '① Buscá el ícono de instalación (⊕ o monitor↓) en la barra de direcciones del navegador y hacé clic ahí.\n\n' +
+        '② Si no aparece: Chrome ⋮ → "Instalar aplicacion"  /  Edge … → "Aplicaciones" → "Instalar este sitio"\n\n' +
+        'Si ninguna opción aparece, abrí la app un par de veces más — Chrome la ofrece cuando detecta uso frecuente.'
+      );
     }
   };
 
