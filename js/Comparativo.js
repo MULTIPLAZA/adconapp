@@ -1,4 +1,4 @@
-import { LlamarSP, FormatearMillon, NombreMes, MostrarCargando, OpcionesGrafico } from './App.js';
+import { LlamarSP, FormatearGs, NombreMes, MostrarCargando, OpcionesGrafico } from './App.js';
 
 let GraficoComp = null;
 let DatosComp   = null;
@@ -132,9 +132,9 @@ function ActualizarComparativo() {
     return `
       <tr>
         <td>${NombreMes(M)}</td>
-        <td class="Derecha">${V1 !== null ? FormatearMillon(V1) : '—'}</td>
-        <td class="Derecha">${V2 !== null ? FormatearMillon(V2) : '—'}</td>
-        <td class="Derecha ${ClaseVar}">${Var !== null ? (Var >= 0 ? '+' : '') + FormatearMillon(Var) : '—'}</td>
+        <td class="Derecha">${V1 !== null ? FormatearGs(V1) : '—'}</td>
+        <td class="Derecha">${V2 !== null ? FormatearGs(V2) : '—'}</td>
+        <td class="Derecha ${ClaseVar}">${Var !== null ? (Var >= 0 ? '+' : '') + FormatearGs(Var) : '—'}</td>
         <td class="Derecha ${ClaseVar}">${Pct !== null ? (Pct >= 0 ? '+' : '') + Pct.toFixed(1) + '%' : '—'}</td>
       </tr>`;
   }).join('');

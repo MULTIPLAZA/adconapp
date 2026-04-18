@@ -1,4 +1,4 @@
-import { LlamarSP, Supa, FormatearMillon, ClasePct, ClaseBarraPct, ClaseKpiFondo, NombreMes, MostrarCargando, OpcionesGrafico } from './App.js';
+import { LlamarSP, Supa, FormatearGs, ClasePct, ClaseBarraPct, ClaseKpiFondo, NombreMes, MostrarCargando, OpcionesGrafico } from './App.js';
 
 let GraficoDia = null;
 
@@ -30,15 +30,15 @@ export async function RenderDashboard(Forzar = false) {
       <div class="FilaKpi">
         <div class="TarjetaKpi">
           <div class="KpiLabel">Venta Hoy</div>
-          <div class="KpiValor">${FormatearMillon(TotalHoy)}</div>
+          <div class="KpiValor">${FormatearGs(TotalHoy)}</div>
         </div>
         <div class="TarjetaKpi">
           <div class="KpiLabel">Venta ${NombreMes(Mes)}</div>
-          <div class="KpiValor">${FormatearMillon(TotalMes)}</div>
+          <div class="KpiValor">${FormatearGs(TotalMes)}</div>
         </div>
         <div class="TarjetaKpi ${PctTotal !== null ? ClaseKpiFondo(PctTotal) : ''}">
           <div class="KpiLabel">Objetivo ${NombreMes(Mes)}</div>
-          <div class="KpiValor">${TotalObj > 0 ? FormatearMillon(TotalObj) : '—'}</div>
+          <div class="KpiValor">${TotalObj > 0 ? FormatearGs(TotalObj) : '—'}</div>
           ${PctTotal !== null ? `<div class="KpiPct ${ClasePct(PctTotal)}">${PctTotal.toFixed(1)}%</div>` : ''}
         </div>
       </div>
@@ -65,9 +65,9 @@ export async function RenderDashboard(Forzar = false) {
                 return `
                   <tr>
                     <td>${S.Sucursal}</td>
-                    <td class="Derecha">${FormatearMillon(S.VentaHoy)}</td>
-                    <td class="Derecha">${FormatearMillon(S.VentaMes)}</td>
-                    <td class="Derecha">${ObjV ? FormatearMillon(ObjV) : '—'}</td>
+                    <td class="Derecha">${FormatearGs(S.VentaHoy)}</td>
+                    <td class="Derecha">${FormatearGs(S.VentaMes)}</td>
+                    <td class="Derecha">${ObjV ? FormatearGs(ObjV) : '—'}</td>
                     <td class="Derecha" style="min-width:80px">
                       ${Pct !== null
                         ? `<span class="${ClasePct(Pct)}">${Pct.toFixed(1)}%</span>

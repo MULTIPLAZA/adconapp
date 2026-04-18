@@ -39,12 +39,19 @@ export function LimpiarCache() {
 }
 
 // ── Utilidades ────────────────────────────────────────
-export function FormatearMillon(Valor) {
+export function FormatearGs(Valor) {
   if (Valor === null || Valor === undefined) return '—';
-  return new Intl.NumberFormat('es-PY', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  }).format(Valor) + ' M';
+  const Signo = Valor < 0 ? '-' : '';
+  const Abs   = Math.abs(Valor);
+  if (Abs >= 1_000_000) {
+    const M = Abs / 1_000_000;
+    return Signo + new Intl.NumberFormat('es-PY', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(M) + 'M';
+  }
+  if (Abs >= 1_000) {
+    const K = Abs / 1_000;
+    return Signo + new Intl.NumberFormat('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(K) + 'K';
+  }
+  return Signo + new Intl.NumberFormat('es-PY', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Abs);
 }
 
 export function ClasePct(Pct) {
@@ -96,7 +103,12 @@ export const OpcionesGrafico = {
       ticks: {
         color: '#8b90a7',
         font:  { size: 11 },
-        callback: (V) => V + ' M'
+        callback: (V) => {
+          const Abs = Math.abs(V);
+          if (Abs >= 1_000_000) return (V / 1_000_000).toFixed(1) + 'M';
+          if (Abs >= 1_000)     return Math.round(V / 1_000) + 'K';
+          return V;
+        }
       },
       grid: { color: '#2e3247' }
     }

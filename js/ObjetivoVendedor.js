@@ -1,4 +1,4 @@
-import { LlamarSP, Supa, FormatearMillon, ClasePct, ClaseBarraPct, NombreMes, MostrarCargando } from './App.js';
+import { LlamarSP, Supa, FormatearGs, ClasePct, ClaseBarraPct, NombreMes, MostrarCargando } from './App.js';
 
 export async function RenderObjetivoVendedor(Forzar = false) {
   const Contenedor = document.getElementById('ContenidoObjetivoVendedor');
@@ -42,7 +42,6 @@ export async function RenderObjetivoVendedor(Forzar = false) {
             <thead>
               <tr>
                 <th>Vendedor</th>
-                <th>Sucursal</th>
                 <th class="Derecha">Real</th>
                 <th class="Derecha">Objetivo</th>
                 <th class="Derecha">Diferencia</th>
@@ -76,7 +75,7 @@ async function CargarTablaObjVen() {
   const Sucursal = document.getElementById('ObjVenSucursal').value;
   const Cuerpo   = document.getElementById('CuerpoTablaObjVen');
 
-  Cuerpo.innerHTML = '<tr><td colspan="6" class="VacioMensaje">Cargando...</td></tr>';
+  Cuerpo.innerHTML = '<tr><td colspan="5" class="VacioMensaje">Cargando...</td></tr>';
 
   document.getElementById('TituloObjVen').textContent =
     `${NombreMes(Mes)} ${Anio}${Sucursal ? ' — ' + Sucursal : ''}`;
@@ -95,41 +94,57 @@ async function CargarTablaObjVen() {
       : DatosVendedor;
 
     if (!Filtrados.length) {
-      Cuerpo.innerHTML = '<tr><td colspan="6" class="VacioMensaje">Sin datos para este periodo</td></tr>';
+      Cuerpo.innerHTML = '<tr><td colspan="5" class="VacioMensaje">Sin datos para este periodo</td></tr>';
       return;
     }
 
+    // Agrupar por sucursal
+    const PorSucursal = {};
+    Filtrados.forEach(V => {
+      if (!PorSucursal[V.Sucursal]) PorSucursal[V.Sucursal] = [];
+      PorSucursal[V.Sucursal].push(V);
+    });
+
     let TotalReal = 0, TotalObj = 0;
+    let Filas = '';
 
-    Cuerpo.innerHTML = Filtrados.map(V => {
-      const Real = V.VentaMes ?? null;
-      const Obj  = ObjetivoMap[V.Vendedor] ?? null;
-      const Dif  = Real !== null && Obj !== null ? Real - Obj : null;
-      const Pct  = Obj > 0 && Real !== null ? (Real / Obj) * 100 : null;
-      const PctW = Pct !== null ? Math.min(Pct, 100).toFixed(1) : 0;
+    Object.entries(PorSucursal).forEach(([Suc, Vendedores]) => {
+      // Fila cabecera de grupo (solo si hay mas de una sucursal)
+      if (!Sucursal) {
+        Filas += `<tr class="FilaGrupo"><td colspan="5">${Suc}</td></tr>`;
+      }
 
-      if (Real) TotalReal += Real;
-      if (Obj)  TotalObj  += Obj;
+      Vendedores.forEach(V => {
+        const Real = V.VentaMes ?? null;
+        const Obj  = ObjetivoMap[V.Vendedor] ?? null;
+        const Dif  = Real !== null && Obj !== null ? Real - Obj : null;
+        const Pct  = Obj > 0 && Real !== null ? (Real / Obj) * 100 : null;
+        const PctW = Pct !== null ? Math.min(Pct, 100).toFixed(1) : 0;
 
-      return `
-        <tr>
-          <td>${V.Vendedor}</td>
-          <td style="color:var(--texto-suave); font-size:12px">${V.Sucursal}</td>
-          <td class="Derecha">${Real !== null ? FormatearMillon(Real) : '—'}</td>
-          <td class="Derecha">${Obj  !== null ? FormatearMillon(Obj)  : '—'}</td>
-          <td class="Derecha ${Dif !== null ? (Dif >= 0 ? 'PctBueno' : 'PctMalo') : ''}">
-            ${Dif !== null ? (Dif >= 0 ? '+' : '') + FormatearMillon(Dif) : '—'}
-          </td>
-          <td class="Derecha" style="min-width:90px">
-            ${Pct !== null
-              ? `<span class="${ClasePct(Pct)}">${Pct.toFixed(1)}%</span>
-                 <div class="BarraProgreso">
-                   <div class="BarraRelleno ${ClaseBarraPct(Pct)}" style="width:${PctW}%"></div>
-                 </div>`
-              : '—'}
-          </td>
-        </tr>`;
-    }).join('');
+        if (Real) TotalReal += Real;
+        if (Obj)  TotalObj  += Obj;
+
+        Filas += `
+          <tr>
+            <td>${V.Vendedor}</td>
+            <td class="Derecha">${Real !== null ? FormatearGs(Real) : '—'}</td>
+            <td class="Derecha">${Obj  !== null ? FormatearGs(Obj)  : '—'}</td>
+            <td class="Derecha ${Dif !== null ? (Dif >= 0 ? 'PctBueno' : 'PctMalo') : ''}">
+              ${Dif !== null ? (Dif >= 0 ? '+' : '') + FormatearGs(Math.abs(Dif)) : '—'}
+            </td>
+            <td class="Derecha" style="min-width:90px">
+              ${Pct !== null
+                ? `<span class="${ClasePct(Pct)}">${Pct.toFixed(1)}%</span>
+                   <div class="BarraProgreso">
+                     <div class="BarraRelleno ${ClaseBarraPct(Pct)}" style="width:${PctW}%"></div>
+                   </div>`
+                : '—'}
+            </td>
+          </tr>`;
+      });
+    });
+
+    Cuerpo.innerHTML = Filas;
 
     // Fila total
     const PctTotal = TotalObj > 0 ? (TotalReal / TotalObj) * 100 : null;
@@ -137,11 +152,10 @@ async function CargarTablaObjVen() {
     Cuerpo.innerHTML += `
       <tr style="border-top: 2px solid var(--borde); font-weight:700">
         <td>TOTAL</td>
-        <td></td>
-        <td class="Derecha">${FormatearMillon(TotalReal)}</td>
-        <td class="Derecha">${TotalObj > 0 ? FormatearMillon(TotalObj) : '—'}</td>
+        <td class="Derecha">${FormatearGs(TotalReal)}</td>
+        <td class="Derecha">${TotalObj > 0 ? FormatearGs(TotalObj) : '—'}</td>
         <td class="Derecha ${TotalObj > 0 ? (DifTotal >= 0 ? 'PctBueno' : 'PctMalo') : ''}">
-          ${TotalObj > 0 ? (DifTotal >= 0 ? '+' : '') + FormatearMillon(DifTotal) : '—'}
+          ${TotalObj > 0 ? (DifTotal >= 0 ? '+' : '') + FormatearGs(Math.abs(DifTotal)) : '—'}
         </td>
         <td class="Derecha ${PctTotal !== null ? ClasePct(PctTotal) : ''}">
           ${PctTotal !== null ? PctTotal.toFixed(1) + '%' : '—'}

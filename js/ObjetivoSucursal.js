@@ -1,4 +1,4 @@
-import { LlamarSP, Supa, FormatearMillon, ClasePct, ClaseBarraPct, NombreMes, MostrarCargando } from './App.js';
+import { LlamarSP, Supa, FormatearGs, ClasePct, ClaseBarraPct, NombreMes, MostrarCargando } from './App.js';
 
 export async function RenderObjetivoSucursal(Forzar = false) {
   const Contenedor = document.getElementById('ContenidoObjetivoSucursal');
@@ -123,10 +123,10 @@ async function CargarTablaObjSuc() {
       return `
         <tr>
           <td>${Suc}</td>
-          <td class="Derecha">${Real !== null ? FormatearMillon(Real) : '—'}</td>
-          <td class="Derecha">${Obj  !== null ? FormatearMillon(Obj)  : '—'}</td>
+          <td class="Derecha">${Real !== null ? FormatearGs(Real) : '—'}</td>
+          <td class="Derecha">${Obj  !== null ? FormatearGs(Obj)  : '—'}</td>
           <td class="Derecha ${Dif !== null ? (Dif >= 0 ? 'PctBueno' : 'PctMalo') : ''}">
-            ${Dif !== null ? (Dif >= 0 ? '+' : '') + FormatearMillon(Dif) : '—'}
+            ${Dif !== null ? (Dif >= 0 ? '+' : '') + FormatearGs(Dif) : '—'}
           </td>
           <td class="Derecha" style="min-width:90px">
             ${Pct !== null
@@ -145,10 +145,10 @@ async function CargarTablaObjSuc() {
     Cuerpo.innerHTML += `
       <tr style="border-top: 2px solid var(--borde); font-weight:700">
         <td>TOTAL</td>
-        <td class="Derecha">${FormatearMillon(TotalReal)}</td>
-        <td class="Derecha">${TotalObj > 0 ? FormatearMillon(TotalObj) : '—'}</td>
+        <td class="Derecha">${FormatearGs(TotalReal)}</td>
+        <td class="Derecha">${TotalObj > 0 ? FormatearGs(TotalObj) : '—'}</td>
         <td class="Derecha ${TotalObj > 0 ? (DifTotal >= 0 ? 'PctBueno' : 'PctMalo') : ''}">
-          ${TotalObj > 0 ? (DifTotal >= 0 ? '+' : '') + FormatearMillon(DifTotal) : '—'}
+          ${TotalObj > 0 ? (DifTotal >= 0 ? '+' : '') + FormatearGs(DifTotal) : '—'}
         </td>
         <td class="Derecha ${PctTotal !== null ? ClasePct(PctTotal) : ''}">
           ${PctTotal !== null ? PctTotal.toFixed(1) + '%' : '—'}
