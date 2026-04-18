@@ -139,7 +139,7 @@ async function CargarTablaYGraficos() {
     document.getElementById('TituloTop3').textContent =
       `Top 3 caida — ultimos 30 dias vs 30 dias anteriores`;
 
-    const DatosVentasDia = await LlamarSP('VENTASXDIA');
+    const DatosVentasDia = await LlamarSP('VENTASXDIA30');
     const VentasActMC = {}, VentasAntMC = {};
     const [FA0, FA1, FB0, FB1] = [LocalStr(Inicio30Act), LocalStr(Ayer), LocalStr(Inicio30Ant), LocalStr(Fin30Ant)];
     DatosVentasDia.forEach(D => {
