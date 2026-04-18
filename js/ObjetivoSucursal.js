@@ -280,27 +280,30 @@ async function CargarTablaYGraficos() {
         const Pct = Ant > 0 ? ((Act - Ant) / Ant) * 100 : null;
         return { Sucursal: Suc, Actual: Act, Anterior: Ant, Pct };
       })
-      .filter(S => S.Pct !== null && S.Pct < 0)
+      .filter(S => S.Pct !== null)
       .sort((A, B) => A.Pct - B.Pct)
       .slice(0, 3);
 
     const Top3El = document.getElementById('ContenidoTop3');
 
     if (!Caidas.length) {
-      Top3El.innerHTML = '<div class="VacioMensaje" style="padding:20px">Sin caidas vs año anterior</div>';
+      Top3El.innerHTML = '<div class="VacioMensaje" style="padding:20px">Sin datos suficientes</div>';
     } else {
-      Top3El.innerHTML = Caidas.map((S, I) => `
+      Top3El.innerHTML = Caidas.map((S, I) => {
+        const ClasePctItem = S.Pct >= 0 ? 'PctBueno' : 'PctMalo';
+        const Signo        = S.Pct >= 0 ? '+' : '';
+        return `
         <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--borde)">
-          <div style="font-size:20px;font-weight:800;color:var(--peligro);width:28px;text-align:center">${I + 1}</div>
+          <div style="font-size:20px;font-weight:800;color:var(--texto-suave);width:28px;text-align:center">${I + 1}</div>
           <div style="flex:1">
             <div style="font-weight:600;font-size:13px">${S.Sucursal}</div>
             <div style="font-size:11px;color:var(--texto-suave);margin-top:2px">
               Ant: ${FormatearGs(S.Anterior)} → Act: ${FormatearGs(S.Actual)}
             </div>
           </div>
-          <div class="PctMalo" style="font-size:16px;font-weight:800">${S.Pct.toFixed(1)}%</div>
-        </div>
-      `).join('');
+          <div class="${ClasePctItem}" style="font-size:16px;font-weight:800">${Signo}${S.Pct.toFixed(1)}%</div>
+        </div>`;
+      }).join('');
     }
 
   } catch (E) {
