@@ -297,7 +297,9 @@ async function CargarHoraSucursal() {
     const Conteo = {};
     Datos.forEach(D => {
       const Suc  = D.Sucursal;
-      const Hora = new Date(D.FechaHora).getHours();
+      // Extraer hora directo del string para evitar conversion UTC en el navegador
+      // FechaHora llega como "2026-04-15 09:20:20.943" (sin T, hora local del servidor)
+      const Hora = parseInt(String(D.FechaHora).substring(11, 13));
       const Rango = RangosHora.find(R => Hora >= R.Desde && Hora < R.Hasta);
       if (!Rango) return;
       if (!Conteo[Suc]) Conteo[Suc] = {};
