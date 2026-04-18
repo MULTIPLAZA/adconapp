@@ -1,5 +1,20 @@
 import { LlamarSP, Supa, FormatearGs, ClasePct, ClaseBarraPct, NombreMes, MostrarCargando } from './App.js';
 
+let GraficoTorta = null;
+
+const ColoresTorta = ['#4f8ef7', '#3db87a', '#f7a84f', '#e05252', '#a78bf7'];
+const ColorResto   = '#3a3f55';
+
+const RangosHora = [
+  { Label: '08-10', Desde:  8, Hasta: 10 },
+  { Label: '10-12', Desde: 10, Hasta: 12 },
+  { Label: '12-14', Desde: 12, Hasta: 14 },
+  { Label: '14-16', Desde: 14, Hasta: 16 },
+  { Label: '16-18', Desde: 16, Hasta: 18 },
+  { Label: '18-20', Desde: 18, Hasta: 20 },
+  { Label: '20+',   Desde: 20, Hasta: 25 },
+];
+
 export async function RenderObjetivoSucursal(Forzar = false) {
   const Contenedor = document.getElementById('ContenidoObjetivoSucursal');
   if (Contenedor.innerHTML && !Forzar) return;
@@ -11,7 +26,6 @@ export async function RenderObjetivoSucursal(Forzar = false) {
     const Hoy  = new Date();
     const Anio = Hoy.getFullYear();
     const Mes  = Hoy.getMonth() + 1;
-
     const Anios = [];
     for (let A = Anio - 1; A <= Anio + 1; A++) Anios.push(A);
 
@@ -27,6 +41,7 @@ export async function RenderObjetivoSucursal(Forzar = false) {
         </select>
       </div>
 
+      <!-- Tabla principal -->
       <div class="Tarjeta">
         <div class="TarjetaTitulo" id="TituloObjSuc">Cargando...</div>
         <div class="TablaContenedor">
@@ -46,12 +61,34 @@ export async function RenderObjetivoSucursal(Forzar = false) {
           </table>
         </div>
       </div>
+
+      <!-- Torta + Top 3 -->
+      <div class="GridDoble">
+        <div class="Tarjeta" style="margin-bottom:0">
+          <div class="TarjetaTitulo">Top 5 por venta</div>
+          <div class="GraficoContenedor" style="height:210px">
+            <canvas id="GraficoTorta"></canvas>
+          </div>
+        </div>
+        <div class="Tarjeta" style="margin-bottom:0">
+          <div class="TarjetaTitulo">Top 3 mayor caida vs año anterior</div>
+          <div id="ContenidoTop3"></div>
+        </div>
+      </div>
+
+      <!-- Horas concurridas -->
+      <div class="Tarjeta" style="margin-top:14px">
+        <div class="TarjetaTitulo">Hora mas concurrida — ultimos 7 dias</div>
+        <div id="ContenidoHoras" class="TablaContenedor">
+          <div class="VacioMensaje">Cargando...</div>
+        </div>
+      </div>
     `;
 
-    await CargarTablaObjSuc();
+    await Promise.all([CargarTablaYGraficos(), CargarHoraSucursal()]);
 
-    document.getElementById('ObjSucAnio').onchange = CargarTablaObjSuc;
-    document.getElementById('ObjSucMes').onchange  = CargarTablaObjSuc;
+    document.getElementById('ObjSucAnio').onchange = CargarTablaYGraficos;
+    document.getElementById('ObjSucMes').onchange  = CargarTablaYGraficos;
 
   } catch (E) {
     Contenedor.innerHTML = `<div class="Alerta AlertaError">Error: ${E.message}</div>`;
@@ -60,44 +97,43 @@ export async function RenderObjetivoSucursal(Forzar = false) {
   }
 }
 
-async function CargarTablaObjSuc() {
+// ── Tabla + Torta + Top3 ──────────────────────────────
+async function CargarTablaYGraficos() {
   const Anio = parseInt(document.getElementById('ObjSucAnio').value);
   const Mes  = parseInt(document.getElementById('ObjSucMes').value);
   const Cuerpo = document.getElementById('CuerpoTablaObjSuc');
   Cuerpo.innerHTML = '<tr><td colspan="5" class="VacioMensaje">Cargando...</td></tr>';
-
-  document.getElementById('TituloObjSuc').textContent =
-    `${NombreMes(Mes)} ${Anio}`;
+  document.getElementById('TituloObjSuc').textContent = `${NombreMes(Mes)} ${Anio}`;
 
   try {
     const Hoy       = new Date();
-    const AnioActual = Hoy.getFullYear();
-    const MesActual  = Hoy.getMonth() + 1;
+    const AnioAct   = Hoy.getFullYear();
+    const MesAct    = Hoy.getMonth() + 1;
 
-    // Ventas reales: si es mes actual usamos VENTASXSUCURSAL, sino VENTASXMES
+    // Ventas reales del mes seleccionado
     let VentasPorSucursal = {};
-    if (Anio === AnioActual && Mes === MesActual) {
+    if (Anio === AnioAct && Mes === MesAct) {
       const Datos = await LlamarSP('VENTASXSUCURSAL');
       Datos.forEach(S => { VentasPorSucursal[S.Sucursal] = S.VentaMes; });
     } else {
       const Datos = await LlamarSP('VENTASXMES');
-      Datos
-        .filter(D => D.Anio === Anio && D.Mes === Mes)
-        .forEach(D => {
-          VentasPorSucursal[D.Sucursal] = (VentasPorSucursal[D.Sucursal] ?? 0) + D.Total;
-        });
+      Datos.filter(D => D.Anio === Anio && D.Mes === Mes)
+           .forEach(D => { VentasPorSucursal[D.Sucursal] = (VentasPorSucursal[D.Sucursal] ?? 0) + D.Total; });
     }
 
-    const { data: Objetivos } = await Supa
-      .from('objetivo_sucursal')
-      .select('sucursal, objetivo')
-      .eq('anio', Anio)
-      .eq('mes', Mes);
+    // Ventas mismo mes año anterior (para Top 3 caida)
+    const DatosMes  = await LlamarSP('VENTASXMES');
+    const VentasAnt = {};
+    DatosMes.filter(D => D.Anio === Anio - 1 && D.Mes === Mes)
+             .forEach(D => { VentasAnt[D.Sucursal] = (VentasAnt[D.Sucursal] ?? 0) + D.Total; });
 
+    // Objetivos Supabase
+    const { data: ObjetivosData } = await Supa
+      .from('objetivo_sucursal').select('sucursal, objetivo')
+      .eq('anio', Anio).eq('mes', Mes);
     const ObjetivoMap = {};
-    (Objetivos ?? []).forEach(O => { ObjetivoMap[O.sucursal] = O.objetivo; });
+    (ObjetivosData ?? []).forEach(O => { ObjetivoMap[O.sucursal] = O.objetivo; });
 
-    // Combinar todas las sucursales
     const Sucursales = [...new Set([
       ...Object.keys(VentasPorSucursal),
       ...Object.keys(ObjetivoMap)
@@ -110,30 +146,27 @@ async function CargarTablaObjSuc() {
 
     let TotalReal = 0, TotalObj = 0;
 
+    // ── Tabla ─────────────────────────────────────────
     Cuerpo.innerHTML = Sucursales.map(Suc => {
       const Real = VentasPorSucursal[Suc] ?? null;
       const Obj  = ObjetivoMap[Suc] ?? null;
       const Dif  = Real !== null && Obj !== null ? Real - Obj : null;
       const Pct  = Obj > 0 && Real !== null ? (Real / Obj) * 100 : null;
       const PctW = Pct !== null ? Math.min(Pct, 100).toFixed(1) : 0;
-
       if (Real) TotalReal += Real;
       if (Obj)  TotalObj  += Obj;
-
       return `
         <tr>
           <td>${Suc}</td>
           <td class="Derecha">${Real !== null ? FormatearGs(Real) : '—'}</td>
           <td class="Derecha">${Obj  !== null ? FormatearGs(Obj)  : '—'}</td>
           <td class="Derecha ${Dif !== null ? (Dif >= 0 ? 'PctBueno' : 'PctMalo') : ''}">
-            ${Dif !== null ? (Dif >= 0 ? '+' : '') + FormatearGs(Dif) : '—'}
+            ${Dif !== null ? (Dif >= 0 ? '+' : '') + FormatearGs(Math.abs(Dif)) : '—'}
           </td>
           <td class="Derecha" style="min-width:90px">
             ${Pct !== null
               ? `<span class="${ClasePct(Pct)}">${Pct.toFixed(1)}%</span>
-                 <div class="BarraProgreso">
-                   <div class="BarraRelleno ${ClaseBarraPct(Pct)}" style="width:${PctW}%"></div>
-                 </div>`
+                 <div class="BarraProgreso"><div class="BarraRelleno ${ClaseBarraPct(Pct)}" style="width:${PctW}%"></div></div>`
               : '—'}
           </td>
         </tr>`;
@@ -143,19 +176,154 @@ async function CargarTablaObjSuc() {
     const PctTotal = TotalObj > 0 ? (TotalReal / TotalObj) * 100 : null;
     const DifTotal = TotalReal - TotalObj;
     Cuerpo.innerHTML += `
-      <tr style="border-top: 2px solid var(--borde); font-weight:700">
+      <tr style="border-top:2px solid var(--borde);font-weight:700">
         <td>TOTAL</td>
         <td class="Derecha">${FormatearGs(TotalReal)}</td>
         <td class="Derecha">${TotalObj > 0 ? FormatearGs(TotalObj) : '—'}</td>
         <td class="Derecha ${TotalObj > 0 ? (DifTotal >= 0 ? 'PctBueno' : 'PctMalo') : ''}">
-          ${TotalObj > 0 ? (DifTotal >= 0 ? '+' : '') + FormatearGs(DifTotal) : '—'}
+          ${TotalObj > 0 ? (DifTotal >= 0 ? '+' : '') + FormatearGs(Math.abs(DifTotal)) : '—'}
         </td>
         <td class="Derecha ${PctTotal !== null ? ClasePct(PctTotal) : ''}">
           ${PctTotal !== null ? PctTotal.toFixed(1) + '%' : '—'}
         </td>
       </tr>`;
 
+    // ── Torta Top 5 ───────────────────────────────────
+    const Ordenadas = Sucursales
+      .map(S => ({ Nombre: S, Valor: VentasPorSucursal[S] ?? 0 }))
+      .filter(S => S.Valor > 0)
+      .sort((A, B) => B.Valor - A.Valor);
+
+    if (Ordenadas.length) {
+      const Top4   = Ordenadas.slice(0, 4);
+      const Resto  = Ordenadas.slice(4).reduce((A, S) => A + S.Valor, 0);
+      const Labels = [...Top4.map(S => S.Nombre), ...(Resto > 0 ? ['Resto'] : [])];
+      const Datos  = [...Top4.map(S => S.Valor),  ...(Resto > 0 ? [Resto]  : [])];
+      const Colores = [...ColoresTorta.slice(0, Top4.length), ...(Resto > 0 ? [ColorResto] : [])];
+
+      if (GraficoTorta) { GraficoTorta.destroy(); GraficoTorta = null; }
+
+      GraficoTorta = new Chart(
+        document.getElementById('GraficoTorta').getContext('2d'),
+        {
+          type: 'doughnut',
+          data: {
+            labels: Labels,
+            datasets: [{ data: Datos, backgroundColor: Colores, borderColor: '#1a1d27', borderWidth: 2 }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { color: '#e2e4ef', font: { size: 10 }, boxWidth: 10, padding: 8 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: (C) => ` ${C.label}: ${FormatearGs(C.raw)}`
+                }
+              }
+            }
+          }
+        }
+      );
+    }
+
+    // ── Top 3 mayor caida ─────────────────────────────
+    const Caidas = Sucursales
+      .map(Suc => {
+        const Act = VentasPorSucursal[Suc] ?? 0;
+        const Ant = VentasAnt[Suc] ?? null;
+        const Pct = Ant > 0 ? ((Act - Ant) / Ant) * 100 : null;
+        return { Sucursal: Suc, Actual: Act, Anterior: Ant, Pct };
+      })
+      .filter(S => S.Pct !== null && S.Pct < 0)
+      .sort((A, B) => A.Pct - B.Pct)
+      .slice(0, 3);
+
+    const Top3El = document.getElementById('ContenidoTop3');
+
+    if (!Caidas.length) {
+      Top3El.innerHTML = '<div class="VacioMensaje" style="padding:20px">Sin caidas vs año anterior</div>';
+    } else {
+      Top3El.innerHTML = Caidas.map((S, I) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--borde)">
+          <div style="font-size:20px;font-weight:800;color:var(--peligro);width:28px;text-align:center">${I + 1}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px">${S.Sucursal}</div>
+            <div style="font-size:11px;color:var(--texto-suave);margin-top:2px">
+              Ant: ${FormatearGs(S.Anterior)} → Act: ${FormatearGs(S.Actual)}
+            </div>
+          </div>
+          <div class="PctMalo" style="font-size:16px;font-weight:800">${S.Pct.toFixed(1)}%</div>
+        </div>
+      `).join('');
+    }
+
   } catch (E) {
-    Cuerpo.innerHTML = `<tr><td colspan="5" class="VacioMensaje">${E.message}</td></tr>`;
+    document.getElementById('CuerpoTablaObjSuc').innerHTML =
+      `<tr><td colspan="5" class="VacioMensaje">${E.message}</td></tr>`;
+  }
+}
+
+// ── Horas concurridas ─────────────────────────────────
+async function CargarHoraSucursal() {
+  const El = document.getElementById('ContenidoHoras');
+  try {
+    const Datos = await LlamarSP('HORASUCURSAL');
+
+    if (!Datos.length) {
+      El.innerHTML = '<div class="VacioMensaje">Sin datos de horario</div>';
+      return;
+    }
+
+    // Agrupar: { [Sucursal]: { [RangoLabel]: count } }
+    const Conteo = {};
+    Datos.forEach(D => {
+      const Suc  = D.Sucursal;
+      const Hora = new Date(D.FechaHora).getHours();
+      const Rango = RangosHora.find(R => Hora >= R.Desde && Hora < R.Hasta);
+      if (!Rango) return;
+      if (!Conteo[Suc]) Conteo[Suc] = {};
+      Conteo[Suc][Rango.Label] = (Conteo[Suc][Rango.Label] ?? 0) + 1;
+    });
+
+    const Sucursales = Object.keys(Conteo).sort();
+    const Labels     = RangosHora.map(R => R.Label);
+
+    El.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Sucursal</th>
+            ${Labels.map(L => `<th class="Derecha">${L}</th>`).join('')}
+            <th class="Derecha">Pico</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${Sucursales.map(Suc => {
+            const Fila   = Conteo[Suc];
+            const MaxVal = Math.max(...Labels.map(L => Fila[L] ?? 0));
+            const PicoL  = Labels.find(L => (Fila[L] ?? 0) === MaxVal) ?? '—';
+            return `
+              <tr>
+                <td>${Suc}</td>
+                ${Labels.map(L => {
+                  const Val    = Fila[L] ?? 0;
+                  const EsPico = Val === MaxVal && MaxVal > 0;
+                  return `<td class="Derecha" style="${EsPico ? 'color:var(--primario);font-weight:700' : 'color:var(--texto-suave)'}">
+                    ${Val > 0 ? Val : '—'}
+                  </td>`;
+                }).join('')}
+                <td class="Derecha" style="color:var(--primario);font-weight:700">${PicoL}</td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch {
+    El.innerHTML = '<div class="VacioMensaje">Sin datos de horario</div>';
   }
 }
