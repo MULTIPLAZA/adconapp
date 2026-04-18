@@ -282,6 +282,14 @@ async function CargarTablaYGraficos() {
   }
 }
 
+// Interpola hue 0 (rojo) → 120 (verde) segun posicion de Val entre Min y Max
+function ColorEscalaHora(Val, Min, Max) {
+  if (Max <= 0) return 'var(--texto-suave)';
+  const Ratio = Max === Min ? 1 : (Val - Min) / (Max - Min);
+  const Hue   = Math.round(Ratio * 120);
+  return `hsl(${Hue}, 95%, 58%)`;
+}
+
 // ── Horas concurridas ─────────────────────────────────
 async function CargarHoraSucursal() {
   const El = document.getElementById('ContenidoHoras');
@@ -321,21 +329,25 @@ async function CargarHoraSucursal() {
         </thead>
         <tbody>
           ${Sucursales.map(Suc => {
-            const Fila    = Conteo[Suc];
-            // Comparar promedios para encontrar pico
-            const MaxProm = Math.max(...Labels.map(L => (Fila[L] ?? 0) / Dias));
-            const PicoL   = Labels.find(L => (Fila[L] ?? 0) / Dias === MaxProm) ?? '—';
+            const Fila   = Conteo[Suc];
+            const Proms  = Labels.map(L => (Fila[L] ?? 0) / Dias);
+            const SoloPos = Proms.filter(P => P > 0);
+            const MinProm = SoloPos.length ? Math.min(...SoloPos) : 0;
+            const MaxProm = SoloPos.length ? Math.max(...SoloPos) : 0;
+            const PicoL   = MaxProm > 0
+              ? Labels[Proms.indexOf(MaxProm)]
+              : '—';
             return `
               <tr>
                 <td>${Suc}</td>
-                ${Labels.map(L => {
-                  const Prom   = (Fila[L] ?? 0) / Dias;
-                  const EsPico = Prom === MaxProm && MaxProm > 0;
-                  return `<td class="Derecha" style="${EsPico ? 'color:var(--primario);font-weight:700' : 'color:var(--texto-suave)'}">
+                ${Proms.map((Prom, I) => {
+                  const Color  = Prom > 0 ? ColorEscalaHora(Prom, MinProm, MaxProm) : 'var(--texto-suave)';
+                  const Bold   = Prom === MaxProm && MaxProm > 0 ? 'font-weight:700;' : '';
+                  return `<td class="Derecha" style="color:${Color};${Bold}">
                     ${Prom > 0 ? Prom.toFixed(1) : '—'}
                   </td>`;
                 }).join('')}
-                <td class="Derecha" style="color:var(--primario);font-weight:700">${PicoL}</td>
+                <td class="Derecha" style="color:hsl(120,95%,58%);font-weight:700">${PicoL}</td>
               </tr>`;
           }).join('')}
         </tbody>
