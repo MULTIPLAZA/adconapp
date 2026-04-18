@@ -66,7 +66,7 @@ export async function RenderObjetivoSucursal(Forzar = false) {
       <div class="GridDoble">
         <div class="Tarjeta" style="margin-bottom:0">
           <div class="TarjetaTitulo">Top 5 por venta</div>
-          <div class="GraficoContenedor" style="height:210px">
+          <div class="GraficoContenedor" style="height:280px">
             <canvas id="GraficoTorta"></canvas>
           </div>
         </div>
@@ -231,17 +231,30 @@ async function CargarTablaYGraficos() {
             plugins: {
               legend: {
                 position: 'bottom',
-                labels: { color: '#e2e4ef', font: { size: 10 }, boxWidth: 10, padding: 8 }
-              },
-              tooltip: {
-                callbacks: {
-                  label: (C) => {
-                    const TotalDs = C.dataset.data.reduce((A, V) => A + V, 0);
-                    const Pct     = TotalDs > 0 ? ((C.raw / TotalDs) * 100).toFixed(1) : '0.0';
-                    return ` ${C.label}: ${FormatearGs(C.raw)}  (${Pct}%)`;
+                labels: {
+                  color: '#e2e4ef',
+                  font: { size: 11 },
+                  boxWidth: 10,
+                  padding: 10,
+                  generateLabels: (Chart) => {
+                    const Ds    = Chart.data.datasets[0];
+                    const Total = Ds.data.reduce((A, V) => A + V, 0);
+                    return Chart.data.labels.map((Lbl, I) => {
+                      const Val = Ds.data[I];
+                      const Pct = Total > 0 ? ((Val / Total) * 100).toFixed(1) : '0.0';
+                      return {
+                        text: `${Lbl}  ${FormatearGs(Val)}  (${Pct}%)`,
+                        fillStyle:   Ds.backgroundColor[I],
+                        strokeStyle: '#1a1d27',
+                        lineWidth: 2,
+                        hidden: false,
+                        index: I
+                      };
+                    });
                   }
                 }
-              }
+              },
+              tooltip: { enabled: false }
             }
           }
         }
