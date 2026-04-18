@@ -235,7 +235,11 @@ async function CargarTablaYGraficos() {
               },
               tooltip: {
                 callbacks: {
-                  label: (C) => ` ${C.label}: ${FormatearGs(C.raw)}`
+                  label: (C) => {
+                    const TotalDs = C.dataset.data.reduce((A, V) => A + V, 0);
+                    const Pct     = TotalDs > 0 ? ((C.raw / TotalDs) * 100).toFixed(1) : '0.0';
+                    return ` ${C.label}: ${FormatearGs(C.raw)}  (${Pct}%)`;
+                  }
                 }
               }
             }
