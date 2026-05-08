@@ -1,4 +1,4 @@
-import { LlamarSP, Supa, FormatearGs, ClasePct, ClaseBarraPct, ClaseKpiFondo, NombreMes, MostrarCargando, OpcionesGrafico } from './App.js';
+import { LlamarSP, FormatearGs, ClasePct, ClaseBarraPct, ClaseKpiFondo, NombreMes, MostrarCargando, OpcionesGrafico } from './App.js';
 
 let GraficoDia = null;
 
@@ -14,16 +14,14 @@ export async function RenderDashboard(Forzar = false) {
     const Anio = Hoy.getFullYear();
     const Mes  = Hoy.getMonth() + 1;
 
-    const [DatosSucursal, DatosDia, RespObjetivos] = await Promise.all([
-      LlamarSP('VENTASXSUCURSAL'),
-      LlamarSP('VENTASXDIA'),
-      Supa.from('objetivo_sucursal').select('sucursal, objetivo').eq('anio', Anio).eq('mes', Mes)
+    const [DatosSucursal, DatosDia, Objetivos] = await Promise.all([
+      LlamarSP('DAS_VENTASXSUCURSAL'),
+      LlamarSP('DAS_VENTASXDIA'),
+      LlamarSP('DAS_OBJ_SUCURSAL_GET', { Anio, Mes })
     ]);
-
-    const Objetivos    = RespObjetivos.data ?? [];
     const TotalHoy     = DatosSucursal.reduce((A, S) => A + (S.VentaHoy ?? 0), 0);
     const TotalMes     = DatosSucursal.reduce((A, S) => A + (S.VentaMes  ?? 0), 0);
-    const TotalObj     = Objetivos.reduce((A, O) => A + (O.objetivo ?? 0), 0);
+    const TotalObj     = Objetivos.reduce((A, O) => A + (O.Objetivo ?? 0), 0);
     const PctTotal     = TotalObj > 0 ? (TotalMes / TotalObj) * 100 : null;
 
     Contenedor.innerHTML = `
@@ -58,8 +56,8 @@ export async function RenderDashboard(Forzar = false) {
             </thead>
             <tbody>
               ${DatosSucursal.map(S => {
-                const Obj = Objetivos.find(O => O.sucursal === S.Sucursal);
-                const ObjV = Obj?.objetivo ?? null;
+                const Obj = Objetivos.find(O => O.Sucursal === S.Sucursal);
+                const ObjV = Obj?.Objetivo ?? null;
                 const Pct  = ObjV > 0 ? (S.VentaMes / ObjV) * 100 : null;
                 const PctW = Pct !== null ? Math.min(Pct, 100).toFixed(1) : 0;
                 return `

@@ -10,7 +10,7 @@ export async function RenderComparativo(Forzar = false) {
 
   try {
     if (!DatosComp || Forzar) {
-      DatosComp = await LlamarSP('VENTASXMES');
+      DatosComp = await LlamarSP('DAS_VENTASXMES');
     }
 
     const Sucursales = [...new Set(DatosComp.map(D => D.Sucursal))].sort();

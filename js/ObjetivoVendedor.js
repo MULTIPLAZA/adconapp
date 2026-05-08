@@ -1,4 +1,4 @@
-import { LlamarSP, Supa, FormatearGs, ClasePct, ClaseBarraPct, NombreMes, MostrarCargando } from './App.js';
+import { LlamarSP, FormatearGs, ClasePct, ClaseBarraPct, NombreMes, MostrarCargando } from './App.js';
 
 export async function RenderObjetivoVendedor(Forzar = false) {
   const Contenedor = document.getElementById('ContenidoObjetivoVendedor');
@@ -13,7 +13,7 @@ export async function RenderObjetivoVendedor(Forzar = false) {
     const Mes  = Hoy.getMonth() + 1;
 
     // Cargar catálogo de sucursales para el filtro
-    const DatosSucursal = await LlamarSP('SUCURSAL');
+    const DatosSucursal = await LlamarSP('DAS_SUCURSAL');
     const Sucursales    = DatosSucursal.map(S => S.Sucursal);
 
     const Anios = [];
@@ -115,13 +115,13 @@ async function CargarTablaObjVen() {
     `${NombreMes(Mes)} ${Anio}${Sucursal ? ' — ' + Sucursal : ''}`;
 
   try {
-    const [DatosVendedor, RespObjetivos] = await Promise.all([
-      LlamarSP('VENTASXVENDEDOR'),
-      Supa.from('objetivo_vendedor').select('vendedor, sucursal, objetivo').eq('anio', Anio).eq('mes', Mes)
+    const [DatosVendedor, ObjetivosData] = await Promise.all([
+      LlamarSP('DAS_VENTASXVENDEDOR'),
+      LlamarSP('DAS_OBJ_VENDEDOR_GET', { Anio, Mes })
     ]);
 
     const ObjetivoMap = {};
-    (RespObjetivos.data ?? []).forEach(O => { ObjetivoMap[O.vendedor] = O.objetivo; });
+    ObjetivosData.forEach(O => { ObjetivoMap[O.Vendedor] = O.Objetivo; });
 
     const Filtrados = Sucursal
       ? DatosVendedor.filter(V => V.Sucursal === Sucursal)

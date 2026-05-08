@@ -1,4 +1,3 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { RenderDashboard }        from './Dashboard.js';
 import { RenderComparativo }      from './Comparativo.js';
 import { RenderObjetivoSucursal } from './ObjetivoSucursal.js';
@@ -6,31 +5,38 @@ import { RenderObjetivoVendedor } from './ObjetivoVendedor.js';
 import { RenderParametro }        from './Parametro.js';
 
 // ── Configuracion ─────────────────────────────────────
-export const UrlApi   = 'https://apisql-production-665e.up.railway.app/sql';
-export const TokenApi = '57e5a1ae078aa519deaa5832a2b43fc42aadc883b4514696506ef41e85aa89ad';
-
-export const Supa = createClient(
-  'https://pmfqrxyptdkjfsxzeuzl.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtZnFyeHlwdGRramZzeHpldXpsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTAyNzUsImV4cCI6MjA5MjAyNjI3NX0.MovyyHyACKS4R81pIB7qNeh--gyPX1k7_nayAyiqjsk'
-);
+export const UrlApi   = 'https://nodoinformatica.ddns.net/sql';
+export const TokenApi = 'e739a79537c4a57bde2c91e3118baa3232d12555370b0140146d265903397a9d';
 
 // ── Cache en sesion ───────────────────────────────────
 const Cache = {};
 
-export async function LlamarSP(Reporte) {
-  if (Cache[Reporte]) return Cache[Reporte];
+export async function LlamarSP(Reporte, Params = {}) {
+  const UsarCache = Object.keys(Params).length === 0;
+  if (UsarCache && Cache[Reporte]) return Cache[Reporte];
+
+  const Esc = s => String(s).replace(/'/g, "''");
+  let Sql = `Exec SpAdconApp @Reporte='${Reporte}'`;
+  if (Params.Usuario  !== undefined) Sql += `, @Usuario='${Esc(Params.Usuario)}'`;
+  if (Params.Clave    !== undefined) Sql += `, @Clave='${Esc(Params.Clave)}'`;
+  if (Params.Anio     !== undefined) Sql += `, @Anio=${parseInt(Params.Anio)}`;
+  if (Params.Mes      !== undefined) Sql += `, @Mes=${parseInt(Params.Mes)}`;
+  if (Params.Sucursal !== undefined) Sql += `, @Sucursal='${Esc(Params.Sucursal)}'`;
+  if (Params.Vendedor !== undefined) Sql += `, @Vendedor='${Esc(Params.Vendedor)}'`;
+  if (Params.Importe  !== undefined) Sql += `, @Importe=${parseFloat(Params.Importe)}`;
+
   const Resp = await fetch(UrlApi, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${TokenApi}`
     },
-    body: JSON.stringify({ sp: `Exec SpAdconApp @Reporte='${Reporte}'` })
+    body: JSON.stringify({ sp: Sql })
   });
   if (!Resp.ok) throw new Error(`Error API: ${Resp.status}`);
   const Datos = await Resp.json();
   if (Datos.error) throw new Error(Datos.error);
-  Cache[Reporte] = Datos;
+  if (UsarCache) Cache[Reporte] = Datos;
   return Datos;
 }
 
@@ -155,6 +161,23 @@ window.Navegar = async function(Vista, Boton) {
   await Renderizadores[Vista]();
 };
 
+// ── Sesion (localStorage) ─────────────────────────────
+const SESSION_KEY = 'das_session';
+
+function GuardarSesion(U) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ id: U.id, nombre: U.nombre, ts: Date.now() }));
+}
+
+function ObtenerSesion() {
+  try {
+    const R = localStorage.getItem(SESSION_KEY);
+    if (!R) return null;
+    const S = JSON.parse(R);
+    if (Date.now() - S.ts > 24 * 60 * 60 * 1000) { localStorage.removeItem(SESSION_KEY); return null; }
+    return S;
+  } catch { return null; }
+}
+
 // ── Autenticacion ─────────────────────────────────────
 function MostrarApp() {
   document.getElementById('LoginFondo').style.display    = 'none';
@@ -179,22 +202,28 @@ async function IniciarLogin() {
   Boton.disabled = true;
   Boton.textContent = 'Ingresando...';
 
-  const { error } = await Supa.auth.signInWithPassword({ email: Usuario, password: Contrasena });
-
-  if (error) {
-    Alerta.textContent   = 'Usuario o contrasena incorrectos';
+  try {
+    const Datos = await LlamarSP('DAS_LOGIN', { Usuario, Clave: Contrasena });
+    const Resp  = Datos[0];
+    if (!Resp || !Resp.ok) {
+      Alerta.textContent   = Resp?.mensaje ?? 'Usuario o contraseña incorrectos';
+      Alerta.style.display = 'block';
+      return;
+    }
+    GuardarSesion(Resp);
+    MostrarApp();
+    await RenderDashboard();
+  } catch (E) {
+    Alerta.textContent   = 'Error al conectar con el servidor';
     Alerta.style.display = 'block';
+  } finally {
     Boton.disabled = false;
     Boton.textContent = 'Ingresar';
-    return;
   }
-
-  MostrarApp();
-  await RenderDashboard();
 }
 
 async function CerrarSesion() {
-  await Supa.auth.signOut();
+  localStorage.removeItem(SESSION_KEY);
   LimpiarCache();
   MostrarLogin();
   document.getElementById('LoginUsuario').value    = '';
@@ -203,22 +232,17 @@ async function CerrarSesion() {
 
 // ── Inicio ────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 
-  // Verificar sesion activa
-  const { data: { session } } = await Supa.auth.getSession();
-
-  if (!session) {
+  if (!ObtenerSesion()) {
     MostrarLogin();
   } else {
     MostrarApp();
     await RenderDashboard();
   }
 
-  // Login: Enter en contrasena
   document.getElementById('LoginContrasena').addEventListener('keydown', (E) => {
     if (E.key === 'Enter') IniciarLogin();
   });
@@ -230,19 +254,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     || window.matchMedia('(display-mode: standalone)').matches;
   const BtnInstalar  = document.getElementById('BotonInstalar');
 
-  // Si ya esta instalada como app, ocultar boton
   if (EsStandalone) BtnInstalar.style.display = 'none';
 
-  // Boton instalar: comportamiento segun plataforma
   BtnInstalar.onclick = async () => {
     if (PromptInstalar) {
-      // Android/Chrome: prompt nativo del sistema
       PromptInstalar.prompt();
       const { outcome } = await PromptInstalar.userChoice;
       if (outcome === 'accepted') BtnInstalar.style.display = 'none';
       PromptInstalar = null;
     } else if (EsIOS) {
-      // iOS: toggle del banner con instrucciones
       const Banner = document.getElementById('BannerIOS');
       Banner.style.display = Banner.style.display === 'none' ? 'block' : 'none';
     } else {
@@ -255,12 +275,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // Banner iOS: mostrar automaticamente al entrar
   if (EsIOS && !EsStandalone) {
     document.getElementById('BannerIOS').style.display = 'block';
   }
 
-  // Boton refrescar
   document.getElementById('BotonRefrescar').onclick = async () => {
     const Btn = document.getElementById('BotonRefrescar');
     Btn.classList.add('Girando');
@@ -269,11 +287,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     Btn.classList.remove('Girando');
   };
 
-  // Boton cerrar sesion
   document.getElementById('BotonSalir').onclick = CerrarSesion;
-
-  // Escuchar cambios de sesion (expiracion automatica)
-  Supa.auth.onAuthStateChange((Evento) => {
-    if (Evento === 'SIGNED_OUT') MostrarLogin();
-  });
 });

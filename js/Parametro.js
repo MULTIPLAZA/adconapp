@@ -1,4 +1,4 @@
-import { LlamarSP, Supa, NombreMes, MostrarCargando } from './App.js';
+import { LlamarSP, NombreMes, MostrarCargando } from './App.js';
 
 let TabActiva = 'Sucursal';
 
@@ -90,12 +90,12 @@ async function CargarTablaParam() {
       </tr>`;
 
       const [DatosSucursal, RespObj] = await Promise.all([
-        LlamarSP('SUCURSAL'),
-        Supa.from('objetivo_sucursal').select('sucursal, objetivo').eq('anio', Anio).eq('mes', Mes)
+        LlamarSP('DAS_SUCURSAL'),
+        LlamarSP('DAS_OBJ_SUCURSAL_GET', { Anio, Mes })
       ]);
 
       const ObjMap = {};
-      (RespObj.data ?? []).forEach(O => { ObjMap[O.sucursal] = O.objetivo; });
+      RespObj.forEach(O => { ObjMap[O.Sucursal] = O.Objetivo; });
 
       Cuerpo.innerHTML = DatosSucursal.map(S => `
         <tr>
@@ -118,12 +118,12 @@ async function CargarTablaParam() {
       </tr>`;
 
       const [DatosVendedor, RespObj] = await Promise.all([
-        LlamarSP('VENDEDOR'),
-        Supa.from('objetivo_vendedor').select('vendedor, objetivo').eq('anio', Anio).eq('mes', Mes)
+        LlamarSP('DAS_VENDEDOR'),
+        LlamarSP('DAS_OBJ_VENDEDOR_GET', { Anio, Mes })
       ]);
 
       const ObjMap = {};
-      (RespObj.data ?? []).forEach(O => { ObjMap[O.vendedor] = O.objetivo; });
+      RespObj.forEach(O => { ObjMap[O.Vendedor] = O.Objetivo; });
 
       Cuerpo.innerHTML = DatosVendedor.map(V => `
         <tr>
@@ -186,16 +186,14 @@ async function GuardarObjetivos() {
       return;
     }
 
-    const Tabla = TabActiva === 'Sucursal' ? 'objetivo_sucursal' : 'objetivo_vendedor';
-    const CampoConflicto = TabActiva === 'Sucursal'
-      ? 'sucursal, anio, mes'
-      : 'vendedor, anio, mes';
+    const Reporte = TabActiva === 'Sucursal' ? 'DAS_OBJ_SUCURSAL_SET' : 'DAS_OBJ_VENDEDOR_SET';
 
-    const { error } = await Supa
-      .from(Tabla)
-      .upsert(Registros, { onConflict: CampoConflicto });
-
-    if (error) throw new Error(error.message);
+    await Promise.all(Registros.map(R => {
+      const P = TabActiva === 'Sucursal'
+        ? { Sucursal: R.sucursal, Anio: R.anio, Mes: R.mes, Importe: R.objetivo }
+        : { Vendedor: R.vendedor, Sucursal: R.sucursal, Anio: R.anio, Mes: R.mes, Importe: R.objetivo };
+      return LlamarSP(Reporte, P);
+    }));
 
     MostrarAlerta('exito', `${Registros.length} objetivo${Registros.length > 1 ? 's' : ''} guardado${Registros.length > 1 ? 's' : ''} correctamente`);
 

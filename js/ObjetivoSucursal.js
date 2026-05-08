@@ -1,4 +1,4 @@
-import { LlamarSP, Supa, FormatearGs, ClasePct, ClaseBarraPct, NombreMes, MostrarCargando } from './App.js';
+import { LlamarSP, FormatearGs, ClasePct, ClaseBarraPct, NombreMes, MostrarCargando } from './App.js';
 
 let GraficoTorta = null;
 
@@ -113,10 +113,10 @@ async function CargarTablaYGraficos() {
     // Ventas reales del mes seleccionado
     let VentasPorSucursal = {};
     if (Anio === AnioAct && Mes === MesAct) {
-      const Datos = await LlamarSP('VENTASXSUCURSAL');
+      const Datos = await LlamarSP('DAS_VENTASXSUCURSAL');
       Datos.forEach(S => { VentasPorSucursal[S.Sucursal] = S.VentaMes; });
     } else {
-      const Datos = await LlamarSP('VENTASXMES');
+      const Datos = await LlamarSP('DAS_VENTASXMES');
       Datos.filter(D => D.Anio === Anio && D.Mes === Mes)
            .forEach(D => { VentasPorSucursal[D.Sucursal] = (VentasPorSucursal[D.Sucursal] ?? 0) + D.Total; });
     }
@@ -139,7 +139,7 @@ async function CargarTablaYGraficos() {
     document.getElementById('TituloTop3').textContent =
       `Top 3 caida — ultimos 30 dias vs 30 dias anteriores`;
 
-    const DatosVentasDia = await LlamarSP('VENTASXDIA30');
+    const DatosVentasDia = await LlamarSP('DAS_VENTASXDIA30');
     const VentasActMC = {}, VentasAntMC = {};
     const [FA0, FA1, FB0, FB1] = [LocalStr(Inicio30Act), LocalStr(Ayer), LocalStr(Inicio30Ant), LocalStr(Fin30Ant)];
     DatosVentasDia.forEach(D => {
@@ -149,12 +149,9 @@ async function CargarTablaYGraficos() {
       if (F >= FB0 && F <= FB1) VentasAntMC[Suc] = (VentasAntMC[Suc] ?? 0) + (D.Total ?? 0);
     });
 
-    // Objetivos Supabase
-    const { data: ObjetivosData } = await Supa
-      .from('objetivo_sucursal').select('sucursal, objetivo')
-      .eq('anio', Anio).eq('mes', Mes);
+    const ObjetivosData = await LlamarSP('DAS_OBJ_SUCURSAL_GET', { Anio, Mes });
     const ObjetivoMap = {};
-    (ObjetivosData ?? []).forEach(O => { ObjetivoMap[O.sucursal] = O.objetivo; });
+    ObjetivosData.forEach(O => { ObjetivoMap[O.Sucursal] = O.Objetivo; });
 
     const Sucursales = [...new Set([
       ...Object.keys(VentasPorSucursal),
@@ -328,7 +325,7 @@ function ColorEscalaHora(Val, UnicosSorted) {
 async function CargarHoraSucursal() {
   const El = document.getElementById('ContenidoHoras');
   try {
-    const Datos = await LlamarSP('HORASUCURSAL');
+    const Datos = await LlamarSP('DAS_HORASUCURSAL');
 
     if (!Datos.length) {
       El.innerHTML = '<div class="VacioMensaje">Sin datos de horario</div>';
