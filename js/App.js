@@ -5,7 +5,7 @@ import { RenderObjetivoVendedor } from './ObjetivoVendedor.js';
 import { RenderParametro }        from './Parametro.js';
 
 // ── Configuracion ─────────────────────────────────────
-export const UrlApi   = 'https://nodoinformatica.ddns.net/sql';
+export const UrlApi   = 'https://nodoapi.ddns.net/sql';
 export const TokenApi = 'e739a79537c4a57bde2c91e3118baa3232d12555370b0140146d265903397a9d';
 
 // ── Cache en sesion ───────────────────────────────────
